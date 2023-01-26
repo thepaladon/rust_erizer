@@ -8,6 +8,15 @@ use glam::Vec3;
 const WIDTH: usize = 1024;
 const HEIGHT: usize = 800;
 
+
+// TODO 
+// - Traversal Acceleration Structure
+// - Clipping 
+// - Anti-Aliasing
+// - Textured Quad - Tomorrw 
+// - Bresenham
+// - Other polygons, circles
+
 pub fn edge_fun(p : Vec2, v0 : Vec2, v1 : Vec2) -> f32 {
     let v0_p = p - v0;
     let v0_v1 = v1 - v0;
@@ -62,25 +71,22 @@ fn main() {
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(0)));
 
-
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = Instant::now();
 
-        //clear function basically
-        for i in buffer.iter_mut() {
-            *i = to_argb8(0, 0, 0, 0); // write something more funny here!
-        }
+        // Clear Screen
+        buffer.fill(0);
 
         for i in 0..buffer.len() {
             let x = i as f32 % WIDTH as f32;
-            let y = i as f32 / WIDTH as f32 ;
+            let y = i as f32 / WIDTH as f32;
 
             let p = Vec2::new(x, y);
 
             let mut fc = Vec3::new(0.0, 0.0, 0.0); //final color 
 
-            let  color0 = Vec3::new(0.0, 0.0, 255.0);
-            let  color1 = Vec3::new(255.0, 0.0, 0.0);
+            let color0 = Vec3::new(0.0, 0.0, 255.0);
+            let color1 = Vec3::new(255.0, 0.0, 0.0);
 
             fc += render_triangle(color0, v0, v1, v2, p);
             fc += render_triangle(color1, v0, v3, v1, p);
