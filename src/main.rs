@@ -8,13 +8,29 @@ use glam::Vec3;
 const WIDTH: usize = 1024;
 const HEIGHT: usize = 800;
 
-// TODO 
-// - Traversal Acceleration Structure
-// - Clipping 
-// - Anti-Aliasing
-// - Textured Quad - Tomorrw 
-// - Bresenham
-// - Other polygons, circles
+#[derive(Copy, Clone)]
+struct Vertex {
+    positions : Vec2,
+    uv : Vec2,
+}
+
+
+struct Triangle {
+    vertices : [Vertex; 3],
+    color : Vec3
+}
+
+impl Triangle { 
+    fn new(vertices: [Vertex; 3], color : Vec3) -> Self {
+        Self { vertices, color }
+    }
+
+    fn render(&self, p : Vec2) -> Vec3 {
+        let color = render_triangle(self.color, self.vertices[0].positions, self.vertices[1].positions, self.vertices[2].positions, p);
+        color
+    }
+
+}
 
 pub fn edge_fun(p : Vec2, v0 : Vec2, v1 : Vec2) -> f32 {
     let v0_p = p - v0;
@@ -25,25 +41,14 @@ pub fn edge_fun(p : Vec2, v0 : Vec2, v1 : Vec2) -> f32 {
 
 //Barycentric coordinates
 pub fn bary_coord(vertices : [Vec2; 3], p : Vec2) -> Vec3 {
+    
     let area0 = edge_fun(p, vertices[1], vertices[2] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
     let area1 = edge_fun(p, vertices[2], vertices[0] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
-    let area2 = edge_fun(p, vertices[0], vertices[1] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
+    let area2 = 1.0 - area0 - area1;
 
     let bary = Vec3::new(area0, area1, area2);
     bary
 }
-
-//Courtesy of Kamen
-//pub fn to_argb8<T: Into<u32> + Copy>(a: T, r: T, g: T, b: T) -> u32
-//{
-//    let mut argb = a.into();
-//
-//    argb = (argb << 8) + r.into();
-//    argb = (argb << 8) + g.into();
-//    argb = (argb << 8) + b.into();
-//
-//    argb
-//}
 
 fn to_argb8(a : u8, r : u8, g : u8, b : u8) -> u32 {
 
@@ -77,10 +82,10 @@ fn render_triangle(color : Vec3, x : Vec2, y : Vec2, z : Vec2, p : Vec2) -> Vec3
 fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-    let v0 = Vec2::new(600.0, 100.0 );
-    let v1 = Vec2::new(400.0, 300.0 );
-    let v2 = Vec2::new(200.0, 100.0 );
-    let v3 = Vec2::new(600.0, 300.0 );
+    let v0 = Vertex { positions : Vec2::new(600.0, 100.0),  uv : Vec2::new( 0.0 , 1.0) } ;
+    let v1 = Vertex { positions : Vec2::new(400.0, 300.0),  uv : Vec2::new( 0.0 , 1.0) } ;
+    let v2 = Vertex { positions : Vec2::new(200.0, 100.0 ), uv : Vec2::new( 0.0 , 1.0) } ;
+    let v3 = Vertex { positions : Vec2::new(600.0, 300.0),  uv : Vec2::new( 0.0 , 1.0) } ;
 
     let mut window = Window::new(
         "Hello Triangle",
@@ -117,10 +122,13 @@ fn main() {
 
             let mut fc = Vec3::new(0.0, 0.0, 0.0); //final color 
             
-            fc += render_triangle(_white, v0, v1, v2, p);
+            let tri0 = Triangle::new([v0, v1, v2], _white); 
+            let tri1 = Triangle::new([v0, v3, v1], _gray); 
             
-            fc += render_triangle(_gray, v0, v3, v1, p);
-          
+            fc += tri0.render(p);
+            fc += tri1.render(p);
+
+            
             buffer[i] = to_argb8(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
 
