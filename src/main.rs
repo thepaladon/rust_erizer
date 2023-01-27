@@ -8,7 +8,6 @@ use glam::Vec3;
 const WIDTH: usize = 1024;
 const HEIGHT: usize = 800;
 
-
 // TODO 
 // - Traversal Acceleration Structure
 // - Clipping 
@@ -22,6 +21,16 @@ pub fn edge_fun(p : Vec2, v0 : Vec2, v1 : Vec2) -> f32 {
     let v0_v1 = v1 - v0;
 
     v0_p.x * v0_v1.y - v0_p.y * v0_v1.x
+}
+
+//Barycentric coordinates
+pub fn bary_coord(vertices : [Vec2; 3], p : Vec2) -> Vec3 {
+    let area0 = edge_fun(p, vertices[1], vertices[2] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
+    let area1 = edge_fun(p, vertices[2], vertices[0] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
+    let area2 = edge_fun(p, vertices[0], vertices[1] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
+
+    let bary = Vec3::new(area0, area1, area2);
+    bary
 }
 
 //Courtesy of Kamen
@@ -49,18 +58,20 @@ fn to_argb8(a : u8, r : u8, g : u8, b : u8) -> u32 {
 
 fn render_triangle(color : Vec3, x : Vec2, y : Vec2, z : Vec2, p : Vec2) -> Vec3 {
 
-        let mut fc = Vec3::new( 0.0, 0.0, 0.0 );
-        
-        // clock wise check
-        let area0 = edge_fun(p, x, y);
-        let area1 = edge_fun(p, y, z);
-        let area2 = edge_fun(p, z, x);
+    let mut fc = Vec3::new( 0.0, 0.0, 0.0 );
+    
+    // clock wise check
+    let area0 = edge_fun(p, x, y);
+    let area1 = edge_fun(p, y, z);
+    let area2 = edge_fun(p, z, x);
 
-        if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
-            fc = color;
-        }
+    if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
+        fc = color;
+        fc = bary_coord([x, y, z], p);
+        fc *= Vec3::new(255.0, 255.0, 255.0);
+    }
 
-        fc
+    fc
 }
 
 fn main() {
@@ -81,12 +92,12 @@ fn main() {
         panic!("{}", e);
     });
 
-    let red = Vec3::new(255.0, 0.0, 0.0);
-    let green = Vec3::new(255.0, 0.0, 0.0);
-    let blue = Vec3::new(0.0, 0.0, 255.0);
-    let white = Vec3::new(255.0, 255.0, 255.0);
-    let gray = Vec3::new(128.0, 128.0, 128.0);
-    let black = Vec3::new(0.0, 0.0, 0.0);
+    let _red = Vec3::new(255.0, 0.0, 0.0);
+    let _green = Vec3::new(255.0, 0.0, 0.0);
+    let _blue = Vec3::new(0.0, 0.0, 255.0);
+    let _white = Vec3::new(255.0, 255.0, 255.0);
+    let _gray = Vec3::new(128.0, 128.0, 128.0);
+    let _black = Vec3::new(0.0, 0.0, 0.0);
 
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(0)));
@@ -99,15 +110,16 @@ fn main() {
         //buffer.fill(0xffffffff);
 
         for i in 0..buffer.len() {
-            let x = i as f32 % WIDTH as f32;
-            let y = i as f32 / WIDTH as f32;
-
+            let x = i as f32 % WIDTH as f32                   + 0.5;
+            let y = f32::floor(i as f32 / WIDTH as f32) + 0.5;
+            
             let p = Vec2::new(x, y);
 
             let mut fc = Vec3::new(0.0, 0.0, 0.0); //final color 
             
-            fc += render_triangle(white, v0, v1, v2, p);
-            fc += render_triangle(gray, v0, v3, v1, p);
+            fc += render_triangle(_white, v0, v1, v2, p);
+            
+            fc += render_triangle(_gray, v0, v3, v1, p);
           
             buffer[i] = to_argb8(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }

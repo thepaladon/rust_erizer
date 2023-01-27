@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 minifb = "0.23"
 glam = "0.22.0"
+# image = "*"
