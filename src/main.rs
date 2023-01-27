@@ -26,9 +26,50 @@ impl Triangle {
     }
 
     fn render(&self, p : Vec2) -> Vec3 {
-        let color = render_triangle(self.color, self.vertices[0].positions, self.vertices[1].positions, self.vertices[2].positions, p);
-        color
+        
+        let x = self.vertices[0].positions;
+        let y = self.vertices[1].positions;
+        let z = self.vertices[2].positions;
+        
+        let mut fc = Vec3::new( 0.0, 0.0, 0.0 );
+    
+        // clock wise check
+        let area0 = edge_fun(p, x, y);
+        let area1 = edge_fun(p, y, z);
+        let area2 = edge_fun(p, z, x);
+
+        if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
+            fc = self.color;
+        }
+
+        fc
     }
+
+    fn render_bary(&self, p : Vec2) -> Vec3 {
+        let x = self.vertices[0].positions;
+        let y = self.vertices[1].positions;
+        let z = self.vertices[2].positions;
+        
+        let mut fc = Vec3::new( 0.0, 0.0, 0.0 );
+    
+        // clock wise check
+        let area0 = edge_fun(p, x, y);
+        let area1 = edge_fun(p, y, z);
+        let area2 = edge_fun(p, z, x);
+
+        if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
+            fc = self.color;
+            fc = bary_coord([x, y, z], p);
+            fc *= Vec3::new(255.0, 255.0, 255.0);
+        }
+
+        fc
+    }
+
+    //fn render_uv(&self, p : Vec2) -> Vec3 {
+    //    let color = render_triangle(self.color, self.vertices[0].positions, self.vertices[1].positions, self.vertices[2].positions, p);
+    //    color
+    //}
 
 }
 
@@ -41,7 +82,7 @@ pub fn edge_fun(p : Vec2, v0 : Vec2, v1 : Vec2) -> f32 {
 
 //Barycentric coordinates
 pub fn bary_coord(vertices : [Vec2; 3], p : Vec2) -> Vec3 {
-    
+
     let area0 = edge_fun(p, vertices[1], vertices[2] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
     let area1 = edge_fun(p, vertices[2], vertices[0] ) / edge_fun(vertices[2], vertices[0], vertices[1] );
     let area2 = 1.0 - area0 - area1;
@@ -58,25 +99,6 @@ fn to_argb8(a : u8, r : u8, g : u8, b : u8) -> u32 {
     argb = (argb << 8) + b as u32;
     argb
 
-}
-
-
-fn render_triangle(color : Vec3, x : Vec2, y : Vec2, z : Vec2, p : Vec2) -> Vec3 {
-
-    let mut fc = Vec3::new( 0.0, 0.0, 0.0 );
-    
-    // clock wise check
-    let area0 = edge_fun(p, x, y);
-    let area1 = edge_fun(p, y, z);
-    let area2 = edge_fun(p, z, x);
-
-    if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
-        fc = color;
-        fc = bary_coord([x, y, z], p);
-        fc *= Vec3::new(255.0, 255.0, 255.0);
-    }
-
-    fc
 }
 
 fn main() {
@@ -125,8 +147,8 @@ fn main() {
             let tri0 = Triangle::new([v0, v1, v2], _white); 
             let tri1 = Triangle::new([v0, v3, v1], _gray); 
             
-            fc += tri0.render(p);
-            fc += tri1.render(p);
+            fc += tri0.render_bary(p);
+            fc += tri1.render_bary(p);
 
             
             buffer[i] = to_argb8(255, fc.x as u8, fc.y as u8, fc.z as u8);
