@@ -1,5 +1,6 @@
 extern crate minifb;
 
+use std::ops::Mul;
 use std::time::Instant;
 use minifb::{Key, Window, WindowOptions};
 use glam::Vec2;
@@ -66,10 +67,36 @@ impl Triangle {
         fc
     }
 
-    //fn render_uv(&self, p : Vec2) -> Vec3 {
-    //    let color = render_triangle(self.color, self.vertices[0].positions, self.vertices[1].positions, self.vertices[2].positions, p);
-    //    color
-    //}
+    fn render_uv(&self, p : Vec2) -> Vec3 {
+        let v0_p = self.vertices[0].positions;
+        let v1_p = self.vertices[1].positions;
+        let v2_p = self.vertices[2].positions;
+        
+        let mut fc = Vec3::new( 0.0, 0.0, 0.0 );
+    
+        // clock wise check
+        let area0 = edge_fun(p, v0_p, v1_p);
+        let area1 = edge_fun(p, v1_p, v2_p);
+        let area2 = edge_fun(p, v2_p, v0_p);
+
+        if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
+            fc = self.color;
+            let bary = bary_coord([v0_p, v1_p, v2_p], p);
+            
+            let v0_uv = self.vertices[0].uv.mul(bary.x); 
+            let v1_uv = self.vertices[1].uv.mul(bary.y);
+            let v2_uv = self.vertices[2].uv.mul(bary.z);  
+            
+            //Uv coords pog
+            let uv =  (v0_uv + v1_uv + v2_uv) * Vec2::new(255.0, 255.0);
+
+            fc = Vec3::new(uv.x, uv.y, 0.0);
+        }
+
+
+
+        fc
+    }
 
 }
 
@@ -104,10 +131,10 @@ fn to_argb8(a : u8, r : u8, g : u8, b : u8) -> u32 {
 fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-    let v0 = Vertex { positions : Vec2::new(600.0, 100.0),  uv : Vec2::new( 0.0 , 1.0) } ;
-    let v1 = Vertex { positions : Vec2::new(400.0, 300.0),  uv : Vec2::new( 0.0 , 1.0) } ;
-    let v2 = Vertex { positions : Vec2::new(200.0, 100.0 ), uv : Vec2::new( 0.0 , 1.0) } ;
-    let v3 = Vertex { positions : Vec2::new(600.0, 300.0),  uv : Vec2::new( 0.0 , 1.0) } ;
+    let v0 = Vertex { positions : Vec2::new(200.0, 200.0),  uv : Vec2::new( 0.0 , 0.0) } ;
+    let v1 = Vertex { positions : Vec2::new(200.0, 600.0),  uv : Vec2::new( 0.0 , 1.0) } ;
+    let v2 = Vertex { positions : Vec2::new(600.0, 200.0 ), uv : Vec2::new( 1.0 , 0.0) } ;
+    let v3 = Vertex { positions : Vec2::new(600.0, 600.0),  uv : Vec2::new( 1.0 , 1.0) } ;
 
     let mut window = Window::new(
         "Hello Triangle",
@@ -144,13 +171,12 @@ fn main() {
 
             let mut fc = Vec3::new(0.0, 0.0, 0.0); //final color 
             
-            let tri0 = Triangle::new([v0, v1, v2], _white); 
-            let tri1 = Triangle::new([v0, v3, v1], _gray); 
+            let tri0 = Triangle::new([v0, v2, v1], _white); 
+            let tri1 = Triangle::new([v2, v3, v1], _gray); 
             
-            fc += tri0.render_bary(p);
-            fc += tri1.render_bary(p);
+            fc += tri0.render_uv(p);
+            fc += tri1.render_uv(p);
 
-            
             buffer[i] = to_argb8(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
 
