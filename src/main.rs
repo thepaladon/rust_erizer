@@ -39,8 +39,8 @@ impl Triangle {
         let area1 = edge_fun(p, y, z);
         let area2 = edge_fun(p, z, x);
 
-        if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
-            fc = self.color;
+        if area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0 { 
+            fc += self.color;
         }
 
         fc
@@ -58,9 +58,8 @@ impl Triangle {
         let area1 = edge_fun(p, y, z);
         let area2 = edge_fun(p, z, x);
 
-        if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
-            fc = self.color;
-            fc = bary_coord([x, y, z], p);
+        if area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0 { 
+            fc += bary_coord([x, y, z], p);
             fc *= Vec3::new(255.0, 255.0, 255.0);
         }
 
@@ -79,8 +78,7 @@ impl Triangle {
         let area1 = edge_fun(p, v1_p, v2_p);
         let area2 = edge_fun(p, v2_p, v0_p);
 
-        if area0 < 0.0 && area1 < 0.0 && area2 < 0.0 { 
-            fc = self.color;
+        if area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0 { 
             let bary = bary_coord([v0_p, v1_p, v2_p], p);
             
             let v0_uv = self.vertices[0].uv.mul(bary.x); 
@@ -90,7 +88,7 @@ impl Triangle {
             //Uv coords pog
             let uv =  (v0_uv + v1_uv + v2_uv) * Vec2::new(255.0, 255.0);
 
-            fc = Vec3::new(uv.x, uv.y, 0.0);
+            fc += Vec3::new(uv.x, uv.y, 0.0);
         }
 
 
@@ -174,6 +172,7 @@ fn main() {
             let tri0 = Triangle::new([v0, v2, v1], _white); 
             let tri1 = Triangle::new([v2, v3, v1], _gray); 
             
+            //the overdrawing will be fixed once I implement accel structure
             fc += tri0.render_uv(p);
             fc += tri1.render_uv(p);
 
