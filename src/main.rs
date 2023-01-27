@@ -2,9 +2,12 @@ extern crate minifb;
 
 use std::ops::Mul;
 use std::time::Instant;
+use image::DynamicImage;
+use image::GenericImageView;
 use minifb::{Key, Window, WindowOptions};
 use glam::Vec2;
 use glam::Vec3;
+use image::{open};
 
 const WIDTH: usize = 1024;
 const HEIGHT: usize = 800;
@@ -14,7 +17,6 @@ struct Vertex {
     positions : Vec2,
     uv : Vec2,
 }
-
 
 struct Triangle {
     vertices : [Vertex; 3],
@@ -90,12 +92,43 @@ impl Triangle {
 
             fc += Vec3::new(uv.x, uv.y, 0.0);
         }
-
-
-
         fc
     }
 
+    fn render_tex(&self, p : Vec2, tex : &DynamicImage) -> Vec3 {
+        let v0_p = self.vertices[0].positions;
+        let v1_p = self.vertices[1].positions;
+        let v2_p = self.vertices[2].positions;
+        
+        let mut fc = Vec3::new( 0.0, 0.0, 0.0 );
+    
+        // clock wise check
+        let area0 = edge_fun(p, v0_p, v1_p);
+        let area1 = edge_fun(p, v1_p, v2_p);
+        let area2 = edge_fun(p, v2_p, v0_p);
+
+        let image_buffer = tex.as_rgb8().expect("Shit's not there >:( ");
+
+        if area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0 { 
+            let bary = bary_coord([v0_p, v1_p, v2_p], p);
+            
+            let v0_uv = self.vertices[0].uv.mul(bary.x); 
+            let v1_uv = self.vertices[1].uv.mul(bary.y);
+            let v2_uv = self.vertices[2].uv.mul(bary.z);  
+           
+            //Uv coords pog
+            let uv =  v0_uv + v1_uv + v2_uv ;
+
+            let img_width = image_buffer.width() as f32 * uv.x;
+            let img_height = image_buffer.height() as f32 * uv.y;
+            
+            let color = image_buffer.get_pixel(img_width as u32 , img_height as u32);
+            
+            fc += Vec3::new(color[0] as f32, color[1] as f32 , color[2] as f32);
+        }
+
+        fc
+    }
 }
 
 pub fn edge_fun(p : Vec2, v0 : Vec2, v1 : Vec2) -> f32 {
@@ -151,6 +184,9 @@ fn main() {
     let _gray = Vec3::new(128.0, 128.0, 128.0);
     let _black = Vec3::new(0.0, 0.0, 0.0);
 
+    let tex = open("resources/Harvey2.jpg").expect("Texture Error: ");
+
+
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(0)));
 
@@ -163,7 +199,7 @@ fn main() {
 
         for i in 0..buffer.len() {
             let x = i as f32 % WIDTH as f32                   + 0.5;
-            let y = f32::floor(i as f32 / WIDTH as f32) + 0.5;
+            let y = f32::floor(i as f32 / WIDTH as f32)  + 0.5;
             
             let p = Vec2::new(x, y);
 
@@ -173,8 +209,8 @@ fn main() {
             let tri1 = Triangle::new([v2, v3, v1], _gray); 
             
             //the overdrawing will be fixed once I implement accel structure
-            fc += tri0.render_uv(p);
-            fc += tri1.render_uv(p);
+            fc += tri0.render_tex(p, &tex);
+            fc += tri1.render_tex(p, &tex);
 
             buffer[i] = to_argb8(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
