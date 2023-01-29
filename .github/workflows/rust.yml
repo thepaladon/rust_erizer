@@ -15,7 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Formats using `cargo fmt`
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: mbrobbel/rustfmt-check@master
+
+  # Formats using `cargo fmt`
     - name: rust-rustfmt-check
       uses: mbrobbel/rustfmt-check@0.5.0
       
