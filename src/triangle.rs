@@ -5,14 +5,14 @@ use glam::{Vec2, Vec3, Vec3Swizzles};
 use image::DynamicImage;
 use std::ops::Mul;
 
-pub struct Triangle {
+pub struct Triangle<'a> {
     pub vertices: [Vertex; 3],
     pub color: Vec3,
     pub aabb: Option<[Vec2; 2]>,
-    pub texture: Option<DynamicImage>,
+    pub texture: Option<&'a DynamicImage>,
 }
 
-impl Triangle {
+impl<'a> Triangle<'a> {
     pub fn new_c(vertices: [Vertex; 3], color: Vec3) -> Self {
         let mut tri = Self {
             vertices,
@@ -24,7 +24,7 @@ impl Triangle {
         tri
     }
 
-    pub fn new_t(vertices: [Vertex; 3], color: Vec3, tex: DynamicImage) -> Self {
+    pub fn new_t(vertices: [Vertex; 3], color: Vec3, tex: &'a DynamicImage) -> Self {
         let mut tri = Self {
             vertices,
             color,

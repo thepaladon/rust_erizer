@@ -65,8 +65,8 @@ fn main() {
 
     let _tex = open("resources/Harvey2.jpg").expect("Texture Error: ");
 
-    let tri0 = Triangle::new_t([v0, v2, v1], _WHITE, _tex.clone());
-    let tri1 = Triangle::new_t([v2, v3, v1], _GRAY, _tex);
+    let tri0 = Triangle::new_t([v0, v2, v1], _WHITE, &_tex);
+    let tri1 = Triangle::new_t([v2, v3, v1], _GRAY, &_tex);
     let tri2 = Triangle::new_c([v4, v6, v5], _BLUE);
 
     // Limit to max ~60 fps update rate
