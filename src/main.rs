@@ -58,7 +58,7 @@ impl Triangle {
                 for x in (aabb[0].x.floor() as usize)..(aabb[1].x.floor() as usize) {
                     for y in (aabb[0].y.floor() as usize)..(aabb[1].y.floor() as usize) {
                         let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
-                        let idx: usize = x + y * WIDTH as usize;
+                        let idx: usize = x + y * WIDTH;
 
                         let src = buffer[idx];
                         let src = u32_to_argb8(src);
@@ -76,7 +76,7 @@ impl Triangle {
                 for x in 0..WIDTH {
                     for y in 0..HEIGHT {
                         let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
-                        let idx: usize = x + y * WIDTH as usize;
+                        let idx: usize = x + y * WIDTH;
 
                         let src = buffer[idx];
                         let src = u32_to_argb8(src);
