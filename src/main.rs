@@ -15,6 +15,7 @@ const HEIGHT: usize = 800;
 #[derive(Copy, Clone)]
 struct Vertex {
     positions: Vec3,
+    #[allow(dead_code)]
     uv: Vec2,
 }
 
@@ -23,21 +24,36 @@ struct Triangle {
     color: Vec3,
 
     aabb: Option<[Vec2; 2]>,
+    #[allow(dead_code)]
+    texture: Option<DynamicImage>,
 }
 
 impl Triangle {
-    fn new(vertices: [Vertex; 3], color: Vec3) -> Self {
+    fn new_c(vertices: [Vertex; 3], color: Vec3) -> Self {
         let mut tri = Self {
             vertices,
             color,
             aabb: None,
+            texture: None,
         };
         tri.calc_aabb();
         tri
     }
 
-    fn render_to_buffer(&self, buffer: &mut Vec<u32>) {
+    fn _new_t(vertices: [Vertex; 3], color: Vec3, tex: DynamicImage) -> Self {
+        let mut tri = Self {
+            vertices,
+            color,
+            aabb: None,
+            texture: Some(tex),
+        };
+        tri.calc_aabb();
+        tri
+    }
+
+    fn render_to_buffer(&self, buffer: &mut [u32]) {
         match self.aabb {
+            //If an AABB exists, check only within that AABB
             Some(aabb) => {
                 for x in (aabb[0].x.floor() as usize)..(aabb[1].x.floor() as usize) {
                     for y in (aabb[0].y.floor() as usize)..(aabb[1].y.floor() as usize) {
@@ -55,7 +71,24 @@ impl Triangle {
                     }
                 }
             }
-            None => todo!(),
+            //else render in the entire buffer
+            None => {
+                for x in 0..WIDTH {
+                    for y in 0..HEIGHT {
+                        let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                        let idx: usize = x + y * WIDTH as usize;
+
+                        let src = buffer[idx];
+                        let src = u32_to_argb8(src);
+
+                        let mut fc = Vec3::new(src[1] as f32, src[2] as f32, src[3] as f32); //final color
+
+                        fc += self.render(p);
+
+                        buffer[idx] = argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+                    }
+                }
+            }
         }
     }
 
@@ -91,13 +124,15 @@ impl Triangle {
         let area2 = edge_fun(p, v2_p.xy(), v0_p.xy());
 
         if area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0 {
+            //if let Some(texture) = self.texture {}
+
             fc += self.color;
         }
 
         fc
     }
 
-    fn render_bary(&self, p: Vec2) -> Vec3 {
+    fn _render_bary(&self, p: Vec2) -> Vec3 {
         let v0_p = self.vertices[0].positions;
         let v1_p = self.vertices[1].positions;
         let v2_p = self.vertices[2].positions;
@@ -117,7 +152,7 @@ impl Triangle {
         fc
     }
 
-    fn render_uv(&self, p: Vec2) -> Vec3 {
+    fn _render_uv(&self, p: Vec2) -> Vec3 {
         let v0_p = self.vertices[0].positions;
         let v1_p = self.vertices[1].positions;
         let v2_p = self.vertices[2].positions;
@@ -145,7 +180,7 @@ impl Triangle {
         fc
     }
 
-    fn render_tex(&self, p: Vec2, tex: &DynamicImage) -> Vec3 {
+    fn _render_tex(&self, p: Vec2, tex: &DynamicImage) -> Vec3 {
         let v0_p = self.vertices[0].positions;
         let v1_p = self.vertices[1].positions;
         let v2_p = self.vertices[2].positions;
@@ -196,8 +231,7 @@ pub fn bary_coord(vertices: [Vec3; 3], p: Vec2) -> Vec3 {
         / edge_fun(vertices[2].xy(), vertices[0].xy(), vertices[1].xy());
     let area2 = 1.0 - area0 - area1;
 
-    let bary = Vec3::new(area0, area1, area2);
-    bary
+    Vec3::new(area0, area1, area2)
 }
 
 fn argb8_to_u32(a: u8, r: u8, g: u8, b: u8) -> u32 {
@@ -248,13 +282,14 @@ fn main() {
     let _green = Vec3::new(0.0, 255.0, 0.0);
     let _blue = Vec3::new(0.0, 0.0, 255.0);
     let _white = Vec3::new(255.0, 255.0, 255.0);
+
     let _gray = Vec3::new(128.0, 128.0, 128.0);
     let _black = Vec3::new(0.0, 0.0, 0.0);
 
-    let tex = open("resources/Harvey2.jpg").expect("Texture Error: ");
+    let _tex = open("resources/Harvey2.jpg").expect("Texture Error: ");
 
-    let tri0 = Triangle::new([v0, v2, v1], _white);
-    let tri1 = Triangle::new([v2, v3, v1], _gray);
+    let tri0 = Triangle::new_c([v0, v2, v1], _white);
+    let tri1 = Triangle::new_c([v2, v3, v1], _gray);
 
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(0)));
@@ -262,8 +297,8 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = Instant::now();
 
-        // Clear Screen (doesn't work currently because of the other iteration)
         let clear_color = argb8_to_u32(255, _black.x as u8, _black.y as u8, _black.z as u8);
+
         buffer.fill(clear_color);
 
         tri0.render_to_buffer(&mut buffer);
