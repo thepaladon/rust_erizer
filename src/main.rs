@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 extern crate minifb;
 
 use glam::Vec2;
@@ -15,7 +18,6 @@ const HEIGHT: usize = 800;
 #[derive(Copy, Clone)]
 struct Vertex {
     positions: Vec3,
-    #[allow(dead_code)]
     uv: Vec2,
 }
 
@@ -24,7 +26,6 @@ struct Triangle {
     color: Vec3,
 
     aabb: Option<[Vec2; 2]>,
-    #[allow(dead_code)]
     texture: Option<DynamicImage>,
 }
 
@@ -40,7 +41,7 @@ impl Triangle {
         tri
     }
 
-    fn _new_t(vertices: [Vertex; 3], color: Vec3, tex: DynamicImage) -> Self {
+    fn new_t(vertices: [Vertex; 3], color: Vec3, tex: DynamicImage) -> Self {
         let mut tri = Self {
             vertices,
             color,
@@ -124,9 +125,26 @@ impl Triangle {
         let area2 = edge_fun(p, v2_p.xy(), v0_p.xy());
 
         if area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0 {
-            //if let Some(texture) = self.texture {}
+            if let Some(texture) = &self.texture {
+                let image_buffer = texture.as_rgb8().expect("Shit's not there >:( ");
+                let bary = bary_coord([v0_p, v1_p, v2_p], p);
 
-            fc += self.color;
+                let v0_uv = self.vertices[0].uv.mul(bary.x);
+                let v1_uv = self.vertices[1].uv.mul(bary.y);
+                let v2_uv = self.vertices[2].uv.mul(bary.z);
+
+                //Uv coords pog
+                let uv = v0_uv + v1_uv + v2_uv;
+
+                let img_width = image_buffer.width() as f32 * uv.x;
+                let img_height = image_buffer.height() as f32 * uv.y;
+
+                let color = image_buffer.get_pixel(img_width as u32, img_height as u32);
+
+                fc += Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
+            } else {
+                fc += self.color;
+            }
         }
 
         fc
@@ -272,6 +290,18 @@ fn main() {
         positions: Vec3::new(600.0, 600.0, 0.0),
         uv: Vec2::new(1.0, 1.0),
     };
+    let v4 = Vertex {
+        positions: Vec3::new(800.0, 750.0, 0.0),
+        uv: Vec2::new(1.0, 1.0),
+    };
+    let v5 = Vertex {
+        positions: Vec3::new(200.0, 200.0, 0.0),
+        uv: Vec2::new(1.0, 1.0),
+    };
+    let v6 = Vertex {
+        positions: Vec3::new(400.0, 700.0, 0.0),
+        uv: Vec2::new(1.0, 1.0),
+    };
 
     let mut window = Window::new("Hello Triangle", WIDTH, HEIGHT, WindowOptions::default())
         .unwrap_or_else(|e| {
@@ -288,8 +318,9 @@ fn main() {
 
     let _tex = open("resources/Harvey2.jpg").expect("Texture Error: ");
 
-    let tri0 = Triangle::new_c([v0, v2, v1], _white);
-    let tri1 = Triangle::new_c([v2, v3, v1], _gray);
+    let tri0 = Triangle::new_t([v0, v2, v1], _white, _tex.clone());
+    let tri1 = Triangle::new_t([v2, v3, v1], _gray, _tex);
+    let tri2 = Triangle::new_c([v4, v6, v5], _blue);
 
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(0)));
@@ -303,21 +334,7 @@ fn main() {
 
         tri0.render_to_buffer(&mut buffer);
         tri1.render_to_buffer(&mut buffer);
-
-        //for i in 0..buffer.len() {
-        //    let x = i as f32 % WIDTH as f32                   + 0.5;
-        //    let y = f32::floor(i as f32 / WIDTH as f32)  + 0.5;
-        //
-        //    let p = Vec2::new(x, y);
-        //
-        //    let mut fc = Vec3::new(0.0, 0.0, 0.0); //final color
-        //
-        //    //the overdrawing will be fixed once I implement accel structure
-        //    fc += tri0.render_tex(p, &tex);
-        //    fc += tri1.render_tex(p, &tex);
-        //
-        //    buffer[i] = to_argb8(255, fc.x as u8, fc.y as u8, fc.z as u8);
-        //}
+        tri2.render_to_buffer(&mut buffer);
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
