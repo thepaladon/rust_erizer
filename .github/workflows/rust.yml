@@ -16,18 +16,20 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: mbrobbel/rustfmt-check@master
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  # Formats using `cargo fmt`
-    - name: rust-rustfmt-check
-      uses: mbrobbel/rustfmt-check@0.5.0
-      
-    # Checks for Build
-    - uses: actions/checkout@v3
-    - name: Build
+    
+    # Checks whether the project is formatted correctly
+    - name: Formatter
+      run: cargo fmt --all -- --check
+    
+    # Check whether the project Builds
+    - name: Builds
       run: cargo build --verbose
+    
+    # Checks whether there are no clippy warnings 
+    - name: No Warnings (warnings)
+      run: cargo clippy -- -D warnings
+    
+    # Checks whether all tests are successful
     - name: Run tests
       run: cargo test --verbose
+    
