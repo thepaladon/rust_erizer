@@ -90,8 +90,7 @@ impl<'a> Triangle<'a> {
             Some(aabb) => {
                 for x in (aabb[0].x.floor() as i32)..(aabb[1].x.floor() as i32) {
                     for y in (aabb[0].y.floor() as i32)..(aabb[1].y.floor() as i32) {
-                        
-                        if x < 0 || x > crate::WIDTH  as i32 - 1 {
+                        if x < 0 || x > crate::WIDTH as i32 - 1 {
                             break;
                         };
                         if y < 0 || y > crate::HEIGHT as i32 - 1 {

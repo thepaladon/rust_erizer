@@ -97,7 +97,6 @@ fn main() {
         tri1.render_to_buffer(&mut buffer, &camera);
         //tri2.render_to_buffer(&mut buffer, &camera);
 
-    
         if window.is_key_down(Key::W) {
             camera.add_position(Vec3::new(0.0, 0.0, -0.5));
         }
