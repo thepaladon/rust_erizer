@@ -98,7 +98,7 @@ impl<'a> Triangle<'a> {
                         };
 
                         let p = Vec2::new(x as f32 - 0.5, y as f32 - 0.5);
-                        let idx: usize = x as usize + y as usize * crate::WIDTH as usize;
+                        let idx: usize = x as usize + y as usize * crate::WIDTH;
 
                         let src = buffer[idx];
                         let src = render_utils::u32_to_argb8(src);
