@@ -39,9 +39,17 @@ impl Transform {
         }
     }
 
-    pub fn from_rotation(quat: Quat) -> Self {
+    pub fn from_rotation_quat(quat: Quat) -> Self {
         Self {
             rotation: quat.normalize(),
+            ..Default::default()
+        }
+    }
+
+    pub fn from_rotation_euler(euler: Vec3) -> Self {
+        Self {
+            rotation: glam::Quat::from_euler(glam::EulerRot::XYZ, euler.x, euler.y, euler.z)
+                .normalize(),
             ..Default::default()
         }
     }
@@ -69,8 +77,18 @@ impl Transform {
         matrix
     }
 
+    pub fn add_rotation(&mut self, euler: Vec3) {
+        let rot =
+            glam::Quat::from_euler(glam::EulerRot::XYZ, euler.x, euler.y, euler.z).normalize();
+        self.rotation *= rot;
+    }
+
     pub fn forward(&self) -> Vec3 {
         self.rotation * -Vec3::Z
+    }
+
+    pub fn right(&self) -> Vec3 {
+        self.rotation * Vec3::X
     }
 
     pub fn up(&self) -> Vec3 {
@@ -94,7 +112,7 @@ impl From<TransformInitParams> for Transform {
         match params {
             TransformInitParams::Identity => Self::IDENTITY,
             TransformInitParams::Translation(translate) => Self::from_translation(translate),
-            TransformInitParams::Rotation(rotation) => Self::from_rotation(rotation),
+            TransformInitParams::Rotation(rotation) => Self::from_rotation_quat(rotation),
             TransformInitParams::Scale(scale) => Self::from_scale(scale),
             TransformInitParams::TranslationRotation(translation, rotation) => {
                 Self::from_translation_and_rotation(translation, rotation)

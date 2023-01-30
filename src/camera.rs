@@ -33,7 +33,7 @@ impl Default for Camera {
             far_plane: 100.0,
             fov: f32::to_radians(60.0),
             aspect_ratio: WIDTH as f32 / HEIGHT as f32,
-            move_speed: 10.0,
+            move_speed: 0.1,
             sensitivity: 10.0,
             transform: Transform::IDENTITY,
         }
@@ -47,6 +47,18 @@ impl Camera {
 
     pub fn add_position(&mut self, translation: Vec3) {
         self.transform.translation += translation;
+    }
+
+    pub fn move_forward(&mut self, dir: f32) {
+        self.transform.translation += self.transform.forward() * self.move_speed * dir;
+    }
+
+    pub fn move_side(&mut self, dir: f32) {
+        self.transform.translation += self.transform.right() * self.move_speed * dir;
+    }
+
+    pub fn move_up(&mut self, dir: f32) {
+        self.transform.translation += self.transform.up() * self.move_speed * dir;
     }
 
     pub fn perspective(&self) -> Mat4 {

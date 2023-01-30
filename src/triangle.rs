@@ -7,7 +7,7 @@ use crate::{
 use super::data::Vertex;
 use glam::{Vec2, Vec3, Vec4};
 use image::DynamicImage;
-use std::ops::{Div, Mul};
+use std::ops::Mul;
 
 pub struct Triangle<'a> {
     pub vertices: [Vertex; 3],
@@ -37,6 +37,10 @@ impl<'a> Triangle<'a> {
             texture: Some(tex),
             transform: Transform::IDENTITY,
         }
+    }
+
+    pub fn replace_transform(&mut self, trans: Transform) {
+        self.transform = trans;
     }
 
     pub fn render_to_buffer(&mut self, buffer: &mut [u32], camera: &Camera) {
@@ -163,7 +167,9 @@ impl<'a> Triangle<'a> {
         let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]);
         let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
+        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0
+            || area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0
+        {
             if let Some(texture) = &self.texture {
                 let image_buffer = texture.as_rgb8().expect("Shit's not there >:( ");
                 let bary = render_utils::better_bary([area1, area2], p, total_area);
@@ -180,10 +186,22 @@ impl<'a> Triangle<'a> {
 
                 let color = image_buffer.get_pixel(img_width as u32, img_height as u32);
 
+                //Bary
+                //fc += bary * Vec3::splat(255.0);
+
+                //UV
+                //fc += Vec3::new(uv.x, uv.y, 0.0) * Vec3::splat(255.0);
+
+                //Color
+                //fc += self.color;
+
+                //Tex
+                fc += Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
+
                 // Tex + color
-                fc += (Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32) + self.color)
-                    .div(2.0)
-                    + 0.5;
+                //fc += (Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32) + self.color)
+                //    .div(2.0)
+                //    + 0.5;
             } else {
                 //Color
                 fc += self.color;
