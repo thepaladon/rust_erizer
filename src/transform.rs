@@ -69,6 +69,14 @@ impl Transform {
         matrix
     }
 
+    pub fn forward(&self) -> Vec3 {
+        self.rotation * -Vec3::Z
+    }
+
+    pub fn up(&self) -> Vec3 {
+        self.rotation * Vec3::Y
+    }
+
     //translation * quat * scale - for column row.
 
     //Functions to have

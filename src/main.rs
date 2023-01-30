@@ -19,6 +19,7 @@ use glam::Vec2;
 use glam::Vec3;
 use image::open;
 use minifb::{Key, Window, WindowOptions};
+use std::f32::INFINITY;
 use std::time::Instant;
 
 const _RED: Vec3 = Vec3::new(255.0, 0.0, 0.0);
@@ -33,23 +34,25 @@ const HEIGHT: usize = 800;
 
 fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let depth_buffer: Vec<f32> = vec![INFINITY; WIDTH * HEIGHT];
 
     let v0 = Vertex {
-        positions: Vec3::new(200.0, 200.0, 0.0),
-        uv: Vec2::new(0.0, 0.0),
+        positions: glam::vec3(-1.0, -1.0, 1.0),
+        uv: glam::vec2(0.0, 1.0),
     };
     let v1 = Vertex {
-        positions: Vec3::new(200.0, 600.0, 0.0),
-        uv: Vec2::new(0.0, 1.0),
+        positions: glam::vec3(-1.0, 1.0, 1.0),
+        uv: glam::vec2(0.0, 0.0),
     };
     let v2 = Vertex {
-        positions: Vec3::new(600.0, 200.0, 0.0),
-        uv: Vec2::new(1.0, 0.0),
+        positions: glam::vec3(1.0, 1.0, 1.0),
+        uv: glam::vec2(1.0, 0.0),
     };
     let v3 = Vertex {
-        positions: Vec3::new(600.0, 600.0, 0.0),
-        uv: Vec2::new(1.0, 1.0),
+        positions: glam::vec3(1.0, -1.0, 1.0),
+        uv: glam::vec2(1.0, 1.0),
     };
+
     let v4 = Vertex {
         positions: Vec3::new(800.0, 750.0, 0.0),
         uv: Vec2::new(1.0, 1.0),
@@ -70,11 +73,13 @@ fn main() {
 
     let _tex = open("resources/Harvey2.jpg").expect("Texture Error: ");
 
-    let tri0 = Triangle::new_t([v0, v2, v1], _RED, &_tex);
-    let tri1 = Triangle::new_t([v2, v3, v1], _GREEN, &_tex);
-    let tri2 = Triangle::new_c([v4, v6, v5], _BLUE);
+    let mut tri0 = Triangle::new_t([v0, v2, v1], _RED, &_tex);
+    let mut tri1 = Triangle::new_t([v0, v3, v2], _GREEN, &_tex);
+    //let mut tri2 = Triangle::new_c([v6, v4, v5], _BLUE);
 
-    let camera = Camera::default();
+    let mut camera = Camera::default();
+    camera.set_position(Vec3::new(0.0, 0.0, 8.0));
+
     let transform = Transform::default();
 
     // Limit to max ~60 fps update rate
@@ -88,9 +93,34 @@ fn main() {
 
         buffer.fill(clear_color);
 
-        tri0.render_to_buffer(&mut buffer);
-        tri1.render_to_buffer(&mut buffer);
-        tri2.render_to_buffer(&mut buffer);
+        tri0.render_to_buffer(&mut buffer, &camera);
+        tri1.render_to_buffer(&mut buffer, &camera);
+        //tri2.render_to_buffer(&mut buffer, &camera);
+
+    
+        if window.is_key_down(Key::W) {
+            camera.add_position(Vec3::new(0.0, 0.0, -0.5));
+        }
+
+        if window.is_key_down(Key::S) {
+            camera.add_position(Vec3::new(0.0, 0.0, 0.5));
+        }
+
+        if window.is_key_down(Key::A) {
+            camera.add_position(Vec3::new(0.5, 0.0, 0.0));
+        }
+
+        if window.is_key_down(Key::D) {
+            camera.add_position(Vec3::new(-0.5, 0.0, 0.0));
+        }
+
+        if window.is_key_down(Key::F) {
+            camera.add_position(Vec3::new(0.0, -0.5, 0.0));
+        }
+
+        if window.is_key_down(Key::R) {
+            camera.add_position(Vec3::new(0.0, 0.5, 0.0));
+        }
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();

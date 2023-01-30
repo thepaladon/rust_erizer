@@ -10,7 +10,7 @@
 // func projection
 // func view (look_at_rh)
 
-use glam::{Vec3, Mat4};
+use glam::{Mat4, Vec3};
 
 use crate::transform::Transform;
 use crate::HEIGHT;
@@ -30,7 +30,7 @@ impl Default for Camera {
     fn default() -> Self {
         Self {
             near_plane: 0.01,
-            far_plane: 200.0,
+            far_plane: 100.0,
             fov: f32::to_radians(60.0),
             aspect_ratio: WIDTH as f32 / HEIGHT as f32,
             move_speed: 10.0,
@@ -41,11 +41,23 @@ impl Default for Camera {
 }
 
 impl Camera {
+    pub fn set_position(&mut self, translation: Vec3) {
+        self.transform.translation = translation;
+    }
+
+    pub fn add_position(&mut self, translation: Vec3) {
+        self.transform.translation += translation;
+    }
+
     pub fn perspective(&self) -> Mat4 {
         Mat4::perspective_rh(self.fov, self.aspect_ratio, self.near_plane, self.far_plane)
     }
 
     pub fn view(&self) -> Mat4 {
-        Mat4::look_at_rh(self.transform.translation, Vec3::ZERO, Vec3::Y)
+        Mat4::look_at_rh(
+            self.transform.translation,
+            self.transform.translation + self.transform.forward(),
+            self.transform.up(),
+        )
     }
 }
