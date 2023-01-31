@@ -28,7 +28,9 @@ pub fn move_camera(window: &Window, camera: &mut Camera, dt: f32) {
     }
 }
 
-pub fn change_fov(window: &Window, camera: &mut Camera, dt: f32) {
-    let dir = window.get_scroll_wheel().unwrap_or((0.0, 0.0));
-    camera.add_fov(-dir.1 * dt);
+pub fn enable_mouse(window: &Window, enabled: &mut bool) {
+    if window.is_key_down(Key::M) {
+        *enabled = !*enabled;
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
 }

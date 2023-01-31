@@ -1,6 +1,13 @@
 use glam::Vec2;
 use minifb::{MouseMode, Window};
 
+use crate::camera::Camera;
+
+pub fn change_fov(window: &Window, camera: &mut Camera, dt: f32) {
+    let dir = window.get_scroll_wheel().unwrap_or((0.0, 0.0));
+    camera.add_fov(-dir.1 * dt);
+}
+
 fn set_mouse_pos(x: i32, y: i32) -> Result<(), String> {
     unsafe {
         if winapi::um::winuser::SetCursorPos(x, y) == 0 {

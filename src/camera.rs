@@ -54,7 +54,6 @@ impl Camera {
     pub fn add_fov(&mut self, change: f32) {
         self.fov += f32::to_radians(change * self.fov_sensitivity);
         self.fov = f32::clamp(self.fov, f32::to_radians(20.0), f32::to_radians(160.0));
-        dbg!(f32::to_degrees(self.fov));
     }
 
     pub fn move_forward(&mut self, dir: f32) {

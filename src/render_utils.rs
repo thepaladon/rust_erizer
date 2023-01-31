@@ -32,6 +32,15 @@ pub fn better_bary(calc_area: [f32; 2], p: Vec2, total_area: f32) -> Vec3 {
     Vec3::new(area0, area1, area2)
 }
 
+pub fn barycentric_coordinates(point: Vec2, v0: Vec2, v1: Vec2, v2: Vec2, area: f32) -> Vec3 {
+    let m0 = edge_fun(point, v1, v2);
+    let m1 = edge_fun(point, v2, v0);
+    let m2 = edge_fun(point, v0, v1);
+    // instead of 3 divisions we can do 1/area *
+    let a = 1.0 / area;
+    glam::vec3(m0 * a, m1 * a, m2 * a)
+}
+
 pub fn argb8_to_u32(a: u8, r: u8, g: u8, b: u8) -> u32 {
     let mut argb: u32 = a as u32;
     argb = (argb << 8) + r as u32;
