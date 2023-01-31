@@ -23,6 +23,7 @@ pub struct Camera {
     pub aspect_ratio: f32,
     pub move_speed: f32,
     pub sensitivity: f32,
+    pub fov_sensitivity: f32,
     pub transform: Transform,
 }
 
@@ -33,8 +34,9 @@ impl Default for Camera {
             far_plane: 100.0,
             fov: f32::to_radians(60.0),
             aspect_ratio: WIDTH as f32 / HEIGHT as f32,
-            move_speed: 0.1,
-            sensitivity: 10.0,
+            move_speed: 2.0,
+            fov_sensitivity: 8.0,
+            sensitivity: 0.05,
             transform: Transform::IDENTITY,
         }
     }
@@ -47,6 +49,12 @@ impl Camera {
 
     pub fn add_position(&mut self, translation: Vec3) {
         self.transform.translation += translation;
+    }
+
+    pub fn add_fov(&mut self, change: f32) {
+        self.fov += f32::to_radians(change * self.fov_sensitivity);
+        self.fov = f32::clamp(self.fov, f32::to_radians(20.0), f32::to_radians(160.0));
+        dbg!(f32::to_degrees(self.fov));
     }
 
     pub fn move_forward(&mut self, dir: f32) {

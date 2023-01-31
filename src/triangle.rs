@@ -46,31 +46,20 @@ impl<'a> Triangle<'a> {
     pub fn render_to_buffer(&mut self, buffer: &mut [u32], camera: &Camera) {
         let mvp = camera.perspective() * camera.view() * self.transform.local();
 
-        let clip0 = mvp
-            * Vec4::new(
-                self.vertices[0].positions.x,
-                self.vertices[0].positions.y,
-                self.vertices[0].positions.z,
-                1.0,
-            );
-        let clip1 = mvp
-            * Vec4::new(
-                self.vertices[1].positions.x,
-                self.vertices[1].positions.y,
-                self.vertices[1].positions.z,
-                1.0,
-            );
-        let clip2 = mvp
-            * Vec4::new(
-                self.vertices[2].positions.x,
-                self.vertices[2].positions.y,
-                self.vertices[2].positions.z,
-                1.0,
-            );
+        //Vec4::from "stolen" from Luca's proj and rec
+        let clip0 = mvp * Vec4::from((self.vertices[0].positions, 1.0));
+        let clip1 = mvp * Vec4::from((self.vertices[1].positions, 1.0));
+        let clip2 = mvp * Vec4::from((self.vertices[2].positions, 1.0));
 
-        let ndc0 = clip0 / clip0.w;
-        let ndc1 = clip1 / clip1.w;
-        let ndc2 = clip2 / clip2.w;
+        // Used for Perspective Correct Mapping for vertices
+        let rec0 = 1.0 / clip0.w;
+        let rec1 = 1.0 / clip1.w;
+        let rec2 = 1.0 / clip2.w;
+
+        //Normalized Device Coordinates [-1 ; 1]
+        let ndc0 = clip0 * rec0;
+        let ndc1 = clip1 * rec1;
+        let ndc2 = clip2 * rec2;
 
         // screeen coordinates remapped to window
         let sc0 = glam::vec2(
@@ -167,9 +156,7 @@ impl<'a> Triangle<'a> {
         let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]);
         let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0
-            || area0 <= 0.0 && area1 <= 0.0 && area2 <= 0.0
-        {
+        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
             if let Some(texture) = &self.texture {
                 let image_buffer = texture.as_rgb8().expect("Shit's not there >:( ");
                 let bary = render_utils::better_bary([area1, area2], p, total_area);

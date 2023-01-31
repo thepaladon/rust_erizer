@@ -727,6 +727,7 @@ dependencies = [
  "glam",
  "image",
  "minifb",
+ "winapi",
 ]
 
 [[package]]
