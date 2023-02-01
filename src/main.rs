@@ -41,32 +41,32 @@ fn main() {
     let mut depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
 
     let v0 = Vertex {
-        positions: glam::vec3(-1.0, -1.0, 1.0),
+        position: glam::vec4(-1.0, -1.0, 1.0, 1.0),
         uv: glam::vec2(0.0, 1.0),
     };
     let v1 = Vertex {
-        positions: glam::vec3(-1.0, 1.0, 1.0),
+        position: glam::vec4(-1.0, 1.0, 1.0, 1.0),
         uv: glam::vec2(0.0, 0.0),
     };
     let v2 = Vertex {
-        positions: glam::vec3(1.0, 1.0, 1.0),
+        position: glam::vec4(1.0, 1.0, 1.0, 1.0),
         uv: glam::vec2(1.0, 0.0),
     };
     let v3 = Vertex {
-        positions: glam::vec3(1.0, -1.0, 1.0),
+        position: glam::vec4(1.0, -1.0, 1.0, 1.0),
         uv: glam::vec2(1.0, 1.0),
     };
 
     let v4 = Vertex {
-        positions: Vec3::new(800.0, 750.0, 0.0),
+        position: glam::vec4(800.0, 750.0, 0.0, 1.0),
         uv: Vec2::new(1.0, 1.0),
     };
     let v5 = Vertex {
-        positions: Vec3::new(200.0, 200.0, 0.0),
+        position: glam::vec4(200.0, 200.0, 0.0, 1.0),
         uv: Vec2::new(1.0, 1.0),
     };
     let v6 = Vertex {
-        positions: Vec3::new(400.0, 700.0, 0.0),
+        position: glam::vec4(400.0, 700.0, 0.0, 1.0),
         uv: Vec2::new(1.0, 1.0),
     };
 
@@ -139,9 +139,9 @@ fn main() {
         }
 
         // Render 2 Triangles
-        tri0.render_to_buffer(&mut buffer, &mut depth_buffer, &camera);
-        tri1.render_to_buffer(&mut buffer, &mut depth_buffer, &camera);
-        tri2.render_to_buffer(&mut buffer, &mut depth_buffer, &camera);
+        tri0.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        tri1.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        tri2.render_triangle(&mut buffer, &mut depth_buffer, &camera);
 
         //Input
         input::move_camera(&window, &mut camera, dt);

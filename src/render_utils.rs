@@ -20,6 +20,16 @@ pub fn bary_coord(vertices: [Vec3; 3], p: Vec2, total_area: f32) -> Vec3 {
     Vec3::new(area0, area1, area2)
 }
 
+pub fn lerp<T>(start: T, end: T, alpha: f32) -> T
+where
+    T: std::ops::Sub<Output = T>
+        + std::ops::Mul<f32, Output = T>
+        + std::ops::Add<Output = T>
+        + Copy,
+{
+    start + (end - start) * alpha
+}
+
 pub fn better_bary(calc_area: [f32; 2], p: Vec2, total_area: f32) -> Vec3 {
     let rec = 1.0 / total_area;
     let area0 = calc_area[0]  //1, 2
