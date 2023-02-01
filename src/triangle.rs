@@ -8,6 +8,7 @@ use super::data::Vertex;
 use glam::{Vec2, Vec3, Vec4};
 use image::DynamicImage;
 
+#[derive(Copy, Clone)]
 pub struct Triangle<'a> {
     pub vertices: [Vertex; 3],
     pub color: Vec3,
@@ -15,6 +16,16 @@ pub struct Triangle<'a> {
     pub texture: Option<&'a DynamicImage>,
 
     pub transform: Transform,
+}
+
+#[allow(clippy::upper_case_acronyms)]
+pub enum VerticesOrder {
+    ABC,
+    ACB,
+    BAC,
+    BCA,
+    CAB,
+    CBA,
 }
 
 impl<'a> Triangle<'a> {
@@ -35,6 +46,38 @@ impl<'a> Triangle<'a> {
             aabb: None,
             texture: Some(tex),
             transform: Transform::IDENTITY,
+        }
+    }
+
+    pub fn reorder(&mut self, order: VerticesOrder) {
+        let copy = *self;
+        match order {
+            VerticesOrder::ABC => { /* same as original */ }
+            VerticesOrder::ACB => {
+                self.vertices[0] = copy.vertices[0];
+                self.vertices[1] = copy.vertices[2];
+                self.vertices[2] = copy.vertices[1];
+            }
+            VerticesOrder::BAC => {
+                self.vertices[0] = copy.vertices[1];
+                self.vertices[1] = copy.vertices[0];
+                self.vertices[2] = copy.vertices[2];
+            }
+            VerticesOrder::BCA => {
+                self.vertices[0] = copy.vertices[1];
+                self.vertices[1] = copy.vertices[2];
+                self.vertices[2] = copy.vertices[0];
+            }
+            VerticesOrder::CAB => {
+                self.vertices[0] = copy.vertices[2];
+                self.vertices[1] = copy.vertices[0];
+                self.vertices[2] = copy.vertices[1];
+            }
+            VerticesOrder::CBA => {
+                self.vertices[0] = copy.vertices[2];
+                self.vertices[1] = copy.vertices[1];
+                self.vertices[2] = copy.vertices[0];
+            }
         }
     }
 
@@ -197,6 +240,10 @@ impl<'a> Triangle<'a> {
                 }
             }
         }
+
+        //AABB
+        //color_buff[idx] =
+        //render_utils::argb8_to_u32(255, 0, 0, 255);
     }
 
     fn calc_aabb(&mut self, vertices: [Vec2; 3]) {
@@ -213,7 +260,21 @@ impl<'a> Triangle<'a> {
             v0_p.y.max(v1_p.y).max(v2_p.y),
         );
 
-        let taabb = [tmin, tmax];
+        let mut taabb = [tmin, tmax];
+
+        //check whether it's within the viewport.
+        if taabb[0].x < 0.0 {
+            taabb[0].x = 0.0;
+        }
+        if taabb[0].y < 0.0 {
+            taabb[0].y = 0.0;
+        }
+        if taabb[0].x > crate::WIDTH as f32 {
+            taabb[0].y = crate::WIDTH as f32;
+        }
+        if taabb[0].y > crate::HEIGHT as f32 {
+            taabb[0].y = crate::HEIGHT as f32;
+        }
 
         self.aabb = Some(taabb);
     }
