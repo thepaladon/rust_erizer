@@ -75,7 +75,7 @@ fn main() {
             panic!("{}", e);
         });
 
-    let _tex = open("resources/Harvey2.jpg").expect("Texture Error: ");
+    let _tex = open("resources/bojan.jpg").expect("Texture Error: ");
 
     let mut tri0 = Triangle::new_t([v0, v2, v1], _WHITE, &_tex);
     let mut tri1 = Triangle::new_t([v0, v3, v2], _WHITE, &_tex);

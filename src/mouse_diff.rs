@@ -72,22 +72,22 @@ pub fn mouse_diff_fn(
     }
 
     if mouse_ss_x < window_pos_tl_x as f32 {
-        set_mouse_pos(window_pos_br_x as i32 - cursor_width, mouse_ss_y as i32).unwrap();
+        set_mouse_pos(window_pos_br_x - cursor_width, mouse_ss_y as i32).unwrap();
         *ignore_mouse = true;
     }
 
     if mouse_ss_y < window_pos_tl_y as f32 {
-        set_mouse_pos(mouse_ss_x as i32, window_pos_br_y as i32 - cursor_width).unwrap();
+        set_mouse_pos(mouse_ss_x as i32, window_pos_br_y - cursor_width).unwrap();
         *ignore_mouse = true;
     }
 
     if mouse_ss_x >= window_pos_br_x as f32 - cursor_width as f32 {
-        set_mouse_pos(window_pos_tl_x as i32 + cursor_width, mouse_ss_y as i32).unwrap();
+        set_mouse_pos(window_pos_tl_x + cursor_width, mouse_ss_y as i32).unwrap();
         *ignore_mouse = true;
     }
 
     if mouse_ss_y >= window_pos_br_y as f32 - cursor_width as f32 {
-        set_mouse_pos(mouse_ss_x as i32, window_pos_tl_y as i32 + cursor_width).unwrap();
+        set_mouse_pos(mouse_ss_x as i32, window_pos_tl_y + cursor_width).unwrap();
         *ignore_mouse = true;
     }
 

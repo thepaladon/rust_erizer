@@ -158,6 +158,13 @@ impl<'a> Triangle<'a> {
                     let img_width = (image_buffer.width() as f32 - 1.0) * uv.x;
                     let img_height = (image_buffer.height() as f32 - 1.0) * uv.y;
 
+                    if img_width < 0.0 || img_width >= image_buffer.width() as f32 {
+                        panic!("Image WIDTH out of bounds.")
+                    }
+                    if img_height < 0.0 || img_height >= image_buffer.height() as f32 {
+                        panic!("Image HEIGHT out of bounds.")
+                    }
+
                     let color = image_buffer.get_pixel(img_width as u32, img_height as u32);
 
                     //Depth
