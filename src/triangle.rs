@@ -1,7 +1,6 @@
 use crate::{
     camera::Camera,
     render_utils::{self, edge_fun},
-    transform::Transform,
 };
 
 use super::data::Vertex;
@@ -9,13 +8,9 @@ use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 use image::DynamicImage;
 
 #[derive(Copy, Clone)]
-pub struct Triangle<'a> {
+pub struct Triangle {
     pub v: [Vertex; 3],
-    pub color: Vec3,
     pub aabb: Option<[Vec2; 2]>,
-    pub texture: Option<&'a DynamicImage>,
-
-    pub transform: Transform,
 }
 
 #[allow(clippy::upper_case_acronyms)]
@@ -28,34 +23,21 @@ pub enum VerticesOrder {
     CBA,
 }
 
-pub enum ClipResult<'a> {
+pub enum ClipResult {
     Clipped,
-    One(Triangle<'a>),
-    Two((Triangle<'a>, Triangle<'a>)),
+    One(Triangle),
+    Two((Triangle, Triangle)),
 }
 
-impl<'a> Triangle<'a> {
-    pub fn new_c(vertices: [Vertex; 3], color: Vec3) -> Self {
+impl Triangle {
+    pub fn new(vertices: [Vertex; 3]) -> Self {
         Self {
             v: vertices,
-            color,
             aabb: None,
-            texture: None,
-            transform: Transform::IDENTITY,
         }
     }
 
-    pub fn new_t(vertices: [Vertex; 3], color: Vec3, tex: &'a DynamicImage) -> Self {
-        Self {
-            v: vertices,
-            color,
-            aabb: None,
-            texture: Some(tex),
-            transform: Transform::IDENTITY,
-        }
-    }
-
-    pub fn reorder(&mut self, order: VerticesOrder) -> Triangle<'a> {
+    pub fn reorder(&self, order: VerticesOrder) -> Triangle {
         let mut copy = *self;
         match order {
             VerticesOrder::ABC => *self,
@@ -92,15 +74,14 @@ impl<'a> Triangle<'a> {
         }
     }
 
-    pub fn replace_transform(&mut self, trans: Transform) {
-        self.transform = trans;
-    }
-
     pub fn render_clipped_triangle(
-        triangle: &Triangle<'a>,
+        triangle: &Triangle,
         buffer: &mut [u32],
         depth: &mut [f32],
         camera: &Camera,
+        texture: Option<&DynamicImage>,
+        color: &Vec3,
+        render_type: i32,
     ) {
         let mut tri = *triangle;
 
@@ -146,49 +127,207 @@ impl<'a> Triangle<'a> {
                     let src = render_utils::u32_to_argb8(src);
 
                     let fc = Vec3::new(src[1] as f32, src[2] as f32, src[3] as f32); //final color
-                    tri.render_pixel(
-                        p,
-                        [rec0, rec1, rec2],
-                        [sc0, sc1, sc2],
-                        total_area,
-                        buffer,
-                        depth,
-                        idx,
-                    );
+
+                    if let Some(texture) = texture {
+                        tri.render_pixel_texture(
+                            p,
+                            [rec0, rec1, rec2],
+                            [sc0, sc1, sc2],
+                            total_area,
+                            buffer,
+                            depth,
+                            texture,
+                            idx,
+                        );
+                    }
                 }
             }
         }
     }
 
-    pub fn render_triangle(&self, buffer: &mut [u32], depth: &mut [f32], camera: &Camera) {
-        let mvp = camera.perspective() * camera.view() * self.transform.local();
-
-        //Vec4::from "stolen" from Luca's proj and rec
-        let clip0 = mvp * self.v[0].position;
-        let clip1 = mvp * self.v[1].position;
-        let clip2 = mvp * self.v[2].position;
-
-        let mut copy = *self;
-        copy.v[0].position = clip0;
-        copy.v[1].position = clip1;
-        copy.v[2].position = clip2;
-
-        //Self::render_clipped_triangle(&copy, buffer, depth, camera);
-
-        match Self::clip_cull_triangle(&mut copy) {
+    pub fn render_triangle(
+        &self,
+        buffer: &mut [u32],
+        depth: &mut [f32],
+        camera: &Camera,
+        texture: Option<&DynamicImage>,
+        color: &Vec3,
+        render_type: i32,
+    ) {
+        match Self::clip_cull_triangle(self) {
             ClipResult::Clipped => {}
             ClipResult::One(tri) => {
-                Self::render_clipped_triangle(&tri, buffer, depth, camera);
+                Self::render_clipped_triangle(
+                    &tri,
+                    buffer,
+                    depth,
+                    camera,
+                    texture,
+                    color,
+                    render_type,
+                );
             }
             ClipResult::Two(tri) => {
-                Self::render_clipped_triangle(&tri.0, buffer, depth, camera);
-                Self::render_clipped_triangle(&tri.1, buffer, depth, camera);
+                Self::render_clipped_triangle(
+                    &tri.0,
+                    buffer,
+                    depth,
+                    camera,
+                    texture,
+                    color,
+                    render_type,
+                );
+                Self::render_clipped_triangle(
+                    &tri.1,
+                    buffer,
+                    depth,
+                    camera,
+                    texture,
+                    color,
+                    render_type,
+                );
             }
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn render_pixel(
+    fn render_pixel_color(
+        &self,
+        p: Vec2,
+        rec: [f32; 3],
+        ssc: [Vec2; 3],
+        total_area: f32,
+        color_buff: &mut [u32],
+        z_buffer: &mut [f32],
+        color: &Vec3,
+        idx: usize,
+    ) {
+        // clock wise check
+        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
+        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
+        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+
+        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
+            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+
+            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+            let correction = 1.0 / correction;
+            let depth = bary.x * self.v[0].position.z
+                + bary.y * self.v[1].position.z
+                + bary.z * self.v[2].position.z;
+
+            if depth < z_buffer[idx] {
+                z_buffer[idx] = depth;
+
+                //Color
+                let fc = color;
+
+                color_buff[idx] =
+                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_pixel_texture(
+        &self,
+        p: Vec2,
+        rec: [f32; 3],
+        ssc: [Vec2; 3],
+        total_area: f32,
+        color_buff: &mut [u32],
+        z_buffer: &mut [f32],
+        texture: &DynamicImage,
+        idx: usize,
+    ) {
+        let v0_uv = self.v[0].uv * rec[0];
+        let v1_uv = self.v[1].uv * rec[1];
+        let v2_uv = self.v[2].uv * rec[2];
+
+        // clock wise check
+        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
+        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
+        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+
+        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
+            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+
+            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+            let correction = 1.0 / correction;
+            let depth = bary.x * self.v[0].position.z
+                + bary.y * self.v[1].position.z
+                + bary.z * self.v[2].position.z;
+
+            if depth < z_buffer[idx] {
+                z_buffer[idx] = depth;
+
+                let image_buffer = texture.as_rgb8().expect("Shit's not there >:( ");
+
+                let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
+                let uv = uv * correction;
+
+                let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
+
+                let img_width = (image_buffer.width() as f32 - 1.0) * uv.x;
+                let img_height = (image_buffer.height() as f32 - 1.0) * uv.y;
+
+                if img_width < 0.0 || img_width >= image_buffer.width() as f32 {
+                    panic!("Image WIDTH out of bounds.")
+                }
+                if img_height < 0.0 || img_height >= image_buffer.height() as f32 {
+                    panic!("Image HEIGHT out of bounds.")
+                }
+
+                let color = image_buffer.get_pixel(img_width as u32, img_height as u32);
+
+                let fc = Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
+
+                color_buff[idx] =
+                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_pixel_depth(
+        &self,
+        p: Vec2,
+        rec: [f32; 3],
+        ssc: [Vec2; 3],
+        total_area: f32,
+        color_buff: &mut [u32],
+        z_buffer: &mut [f32],
+        texture: &DynamicImage,
+        idx: usize,
+    ) {
+        // clock wise check
+        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
+        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
+        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+
+        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
+            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+
+            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+            let correction = 1.0 / correction;
+            let depth = bary.x * self.v[0].position.z
+                + bary.y * self.v[1].position.z
+                + bary.z * self.v[2].position.z;
+
+            if depth < z_buffer[idx] {
+                z_buffer[idx] = depth;
+
+                //Bary
+                let fc = bary * Vec3::splat(255.0);
+
+                color_buff[idx] =
+                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_pixel_uv(
         &self,
         p: Vec2,
         rec: [f32; 3],
@@ -219,67 +358,64 @@ impl<'a> Triangle<'a> {
             if depth < z_buffer[idx] {
                 z_buffer[idx] = depth;
 
-                //Final Color
-                #[allow(unused_assignments)] // for quick prototyping
-                let mut fc = Vec3::new(0.0, 0.0, 0.0);
+                let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
+                let uv = uv * correction;
 
-                if let Some(texture) = &self.texture {
-                    let image_buffer = texture.as_rgb8().expect("Shit's not there >:( ");
+                let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
 
-                    let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
-                    let uv = uv * correction;
+                //UV
+                let fc = Vec3::new(uv.x, uv.y, 0.0) * Vec3::splat(255.0);
 
-                    let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
-
-                    let img_width = (image_buffer.width() as f32 - 1.0) * uv.x;
-                    let img_height = (image_buffer.height() as f32 - 1.0) * uv.y;
-
-                    if img_width < 0.0 || img_width >= image_buffer.width() as f32 {
-                        panic!("Image WIDTH out of bounds.")
-                    }
-                    if img_height < 0.0 || img_height >= image_buffer.height() as f32 {
-                        panic!("Image HEIGHT out of bounds.")
-                    }
-
-                    let color = image_buffer.get_pixel(img_width as u32, img_height as u32);
-
-                    //Depth
-                    //fc = depth * Vec3::splat(255.0);
-
-                    //Bary
-                    //fc += bary * Vec3::splat(255.0);
-
-                    //UV
-                    //fc += Vec3::new(uv.x, uv.y, 0.0) * Vec3::splat(255.0);
-
-                    //Color
-                    //fc += self.color;
-
-                    //Tex
-                    fc = Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
-
-                    // Tex + color
-                    //fc += (Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32) + self.color)
-                    //    .div(2.0)
-                    //    + 0.5;
-
-                    color_buff[idx] =
-                        render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-                } else {
-                    //Color
-                    fc = self.color;
-                    color_buff[idx] =
-                        render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-                }
+                color_buff[idx] =
+                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
             }
         }
-
-        //AABB
-        //color_buff[idx] =
-        //render_utils::argb8_to_u32(255, 0, 0, 255);
     }
 
-    pub fn clip_cull_triangle(tri: &mut Triangle<'a>) -> ClipResult<'a> {
+    #[allow(clippy::too_many_arguments)]
+    fn render_pixel_bary(
+        &self,
+        p: Vec2,
+        rec: [f32; 3],
+        ssc: [Vec2; 3],
+        total_area: f32,
+        color_buff: &mut [u32],
+        z_buffer: &mut [f32],
+        texture: &DynamicImage,
+        idx: usize,
+    ) {
+        // clock wise check
+        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
+        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
+        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+
+        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
+            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+
+            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+            let correction = 1.0 / correction;
+            let depth = bary.x * self.v[0].position.z
+                + bary.y * self.v[1].position.z
+                + bary.z * self.v[2].position.z;
+
+            if depth < z_buffer[idx] {
+                z_buffer[idx] = depth;
+
+                //Depth
+                let fc = depth * Vec3::splat(255.0);
+
+                color_buff[idx] =
+                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+            }
+        }
+    }
+
+    fn render_aabb(&self, color_buff: &mut [u32], idx: usize) {
+        //AABB
+        color_buff[idx] = render_utils::argb8_to_u32(255, 0, 0, 255);
+    }
+
+    pub fn clip_cull_triangle(tri: &Triangle) -> ClipResult {
         // All triangles not facing the camera are discarded
         if Self::cull_triangle_backface([tri.v[0].position, tri.v[1].position, tri.v[2].position]) {
             return ClipResult::Clipped;
@@ -326,7 +462,7 @@ impl<'a> Triangle<'a> {
         normal.dot(view_dir) >= 0.0
     }
 
-    pub fn clip_triangle_one(&self) -> Triangle<'a> {
+    pub fn clip_triangle_one(&self) -> Triangle {
         let v0z = self.v[0].position.z;
         let v1z = self.v[1].position.z;
         let v2z = self.v[2].position.z;
@@ -354,7 +490,7 @@ impl<'a> Triangle<'a> {
         copy
     }
 
-    fn clip_triangle_two(&self) -> (Triangle<'a>, Triangle<'a>) {
+    fn clip_triangle_two(&self) -> (Triangle, Triangle) {
         // calculate alpha values for getting adjusted vertices
         let alpha_a = (-self.v[0].position.z) / (self.v[1].position.z - self.v[0].position.z);
         let alpha_b = (-self.v[0].position.z) / (self.v[2].position.z - self.v[0].position.z);

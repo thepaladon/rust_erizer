@@ -6,15 +6,16 @@ extern crate minifb;
 mod camera;
 mod data;
 mod input;
+mod mesh;
 mod mouse_diff;
 mod render_utils;
 mod transform;
 mod triangle;
 
 use data::Vertex;
+use mesh::Mesh;
 use minifb::MouseMode;
 use transform::Transform;
-use triangle::Triangle;
 
 use camera::Camera;
 
@@ -77,9 +78,9 @@ fn main() {
 
     let _tex = open("resources/bojan.jpg").expect("Texture Error: ");
 
-    let mut tri0 = Triangle::new_t([v0, v2, v1], _WHITE, &_tex);
-    let mut tri1 = Triangle::new_t([v0, v3, v2], _WHITE, &_tex);
-    let mut tri2 = Triangle::new_t([v0, v3, v2], _BLUE, &_tex);
+    let mut tri0 = Mesh::from_texture(&[v0, v2, v1], &[0, 1, 2], &_tex);
+    let mut tri1 = Mesh::from_texture(&[v0, v3, v2], &[0, 1, 2], &_tex);
+    let mut tri2 = Mesh::from_texture(&[v0, v3, v2], &[0, 1, 2], &_tex);
 
     // Camera Init
     let mut mouse_camera_controls = true;
