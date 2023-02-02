@@ -12,14 +12,13 @@ mod render_utils;
 mod transform;
 mod triangle;
 
-use data::Vertex;
 use mesh::Mesh;
+use minifb::MouseButton;
 use minifb::MouseMode;
 use transform::Transform;
 
 use camera::Camera;
 
-use glam::Vec2;
 use glam::Vec3;
 use image::open;
 use minifb::{Key, Window, WindowOptions};
@@ -41,36 +40,6 @@ fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let mut depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
 
-    let v0 = Vertex {
-        position: glam::vec4(-1.0, -1.0, 1.0, 1.0),
-        uv: glam::vec2(0.0, 1.0),
-    };
-    let v1 = Vertex {
-        position: glam::vec4(-1.0, 1.0, 1.0, 1.0),
-        uv: glam::vec2(0.0, 0.0),
-    };
-    let v2 = Vertex {
-        position: glam::vec4(1.0, 1.0, 1.0, 1.0),
-        uv: glam::vec2(1.0, 0.0),
-    };
-    let v3 = Vertex {
-        position: glam::vec4(1.0, -1.0, 1.0, 1.0),
-        uv: glam::vec2(1.0, 1.0),
-    };
-
-    let v4 = Vertex {
-        position: glam::vec4(800.0, 750.0, 0.0, 1.0),
-        uv: Vec2::new(1.0, 1.0),
-    };
-    let v5 = Vertex {
-        position: glam::vec4(200.0, 200.0, 0.0, 1.0),
-        uv: Vec2::new(1.0, 1.0),
-    };
-    let v6 = Vertex {
-        position: glam::vec4(400.0, 700.0, 0.0, 1.0),
-        uv: Vec2::new(1.0, 1.0),
-    };
-
     let mut window = Window::new("Hello Triangle", WIDTH, HEIGHT, WindowOptions::default())
         .unwrap_or_else(|e| {
             panic!("{}", e);
@@ -78,9 +47,11 @@ fn main() {
 
     let _tex = open("resources/bojan.jpg").expect("Texture Error: ");
 
-    let mut tri0 = Mesh::from_texture(&[v0, v2, v1], &[0, 1, 2], &_tex);
-    let mut tri1 = Mesh::from_texture(&[v0, v3, v2], &[0, 1, 2], &_tex);
-    let mut tri2 = Mesh::from_texture(&[v0, v3, v2], &[0, 1, 2], &_tex);
+    let mut plane = Mesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], &_tex);
+    let mut triangle = Mesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], &_tex);
+    let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &_tex);
+    let mut rhombus = Mesh::from_texture(&data::RHOMBUS_VERTICES, &data::RHOMBUS_INDEX, &_tex);
+    let mut pyramid = Mesh::from_texture(&data::PYRAMID_VERTEX, &data::PYRAMID_INDEX, &_tex);
 
     // Camera Init
     let mut mouse_camera_controls = true;
@@ -111,18 +82,23 @@ fn main() {
 
         //Rotate object on screen
         rotation += 0.01;
-        let transform = Transform::from_rotation_quat(glam::Quat::from_euler(
+        let cube_trans = Transform::from_rotation_quat(glam::Quat::from_euler(
             glam::EulerRot::XYZ,
             rotation,
             rotation,
             0.0,
         ));
 
-        let transform2 = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
+        let plane_trans = Transform::from_translation(Vec3::new(4.0, 0.0, 0.0));
+        let rhomb_trans = Transform::from_translation(Vec3::new(0.0, 3.0, 0.0));
+        let pyramid_trans = Transform::from_translation(Vec3::new(2.0, 3.0, 2.0));
+        let tri_trans = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
 
-        tri0.replace_transform(transform);
-        tri1.replace_transform(transform);
-        tri2.replace_transform(transform2);
+        plane.replace_transform(plane_trans);
+        cube.replace_transform(cube_trans);
+        triangle.replace_transform(tri_trans);
+        rhombus.replace_transform(rhomb_trans);
+        pyramid.replace_transform(pyramid_trans);
 
         // Mouse diff for camera rotaiton
         enable_mouse(&window, &mut mouse_camera_controls);
@@ -139,10 +115,21 @@ fn main() {
             window.set_cursor_visibility(true);
         }
 
+        if window.get_mouse_down(MouseButton::Left) {
+            plane.next_render_mode();
+            cube.next_render_mode();
+            triangle.next_render_mode();
+            rhombus.next_render_mode();
+            pyramid.next_render_mode();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
         // Render 2 Triangles
-        tri0.render_triangle(&mut buffer, &mut depth_buffer, &camera);
-        tri1.render_triangle(&mut buffer, &mut depth_buffer, &camera);
-        tri2.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        plane.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        cube.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        triangle.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        rhombus.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        pyramid.render_triangle(&mut buffer, &mut depth_buffer, &camera);
 
         //Input
         input::move_camera(&window, &mut camera, dt);
