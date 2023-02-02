@@ -1,7 +1,8 @@
-use glam::Vec3;
-use image::DynamicImage;
+use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
-use crate::{camera::Camera, data::Vertex, transform::Transform, triangle::Triangle};
+use crate::{
+    camera::Camera, data::Vertex, texture::Texture, transform::Transform, triangle::Triangle, material::Material,
+};
 
 pub enum RenderMode {
     Color,
@@ -33,36 +34,61 @@ impl RenderMode {
 pub struct Mesh<'a> {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
-
-    pub color: Vec3,
-    pub texture: Option<&'a DynamicImage>,
+    pub material: Material,
+    pub texture: Option<&'a Texture>,
     pub transform: Transform,
     pub render_mode: RenderMode,
 }
 
+
 impl<'a> Mesh<'a> {
-    pub fn from_color(vertices: &[Vertex], indices: &[u32], color: Vec3) -> Self {
+    //Default Empty Constructor
+    pub fn new() -> Self {
+        let material = Material {
+            base_color: Vec4::splat(255.0),
+            ..Default::default()
+        };
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            material,
+            texture: None,
+            transform: Transform::IDENTITY,
+            render_mode: RenderMode::Bary,
+        }
+    }
+
+    pub fn from_color(vertices: &[Vertex], indices: &[u32], color: Vec4) -> Self {
+        let material = Material {
+            base_color: color,
+            ..Default::default()
+        };
         Self {
             vertices: vertices.to_vec(),
             indices: indices.to_vec(),
-            color,
+            material,
             texture: None,
             transform: Transform::IDENTITY,
             render_mode: RenderMode::Color,
         }
     }
 
-    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &'a DynamicImage) -> Self {
+    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &'a Texture) -> Self {
         assert!(
             indices.len() % 3 == 0,
             "Indices size is wrong. {} % 3 == 0",
             indices.len()
         );
 
+        let material = Material {
+            base_tex_idx: -1,
+            base_color: Vec4::splat(255.0),
+        };
+
         Self {
             vertices: vertices.to_vec(),
             indices: indices.to_vec(),
-            color: Vec3::splat(255.0),
+            material,
             texture: Some(texture),
             transform: Transform::IDENTITY,
             render_mode: RenderMode::Texture,
@@ -77,7 +103,7 @@ impl<'a> Mesh<'a> {
         self.render_mode = self.render_mode.next_mode();
     }
 
-    pub fn render_triangle(&self, buffer: &mut [u32], depth: &mut [f32], camera: &Camera) {
+    pub fn render(&self, buffer: &mut [u32], depth: &mut [f32], camera: &Camera) {
         let mvp = camera.perspective() * camera.view() * self.transform.local();
 
         for i in (0..self.indices.len()).step_by(3) {
@@ -106,9 +132,93 @@ impl<'a> Mesh<'a> {
                 depth,
                 camera,
                 self.texture,
-                &self.color,
+                &self.material.base_color.xyz(),
                 &self.render_mode,
             );
         }
+    }
+
+    pub fn gltf_load_mesh(mesh: &gltf::Mesh, buffers: &[gltf::buffer::Data]) -> Self {
+        let mut positions: Vec<Vec3> = Vec::new();
+        let mut tex_coords: Vec<Vec2> = Vec::new();
+        let mut normals: Vec<Vec3> = Vec::new();
+        let mut indices = vec![];
+
+        let mut mesh_result = Mesh::new();
+        let mut mat_result = Material::default();
+
+        for primitive in mesh.primitives() {
+            let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+            if let Some(indices_reader) = reader.read_indices() {
+                indices_reader.into_u32().for_each(|i| indices.push(i));
+            }
+            if let Some(positions_reader) = reader.read_positions() {
+                positions_reader.for_each(|p| positions.push(Vec3::new(p[0], p[1], p[2])));
+            }
+            if let Some(normals_reader) = reader.read_normals() {
+                normals_reader.for_each(|n| normals.push(Vec3::new(n[0], n[1], n[2])));
+            }
+            if let Some(tex_coord_reader) = reader.read_tex_coords(0) {
+                tex_coord_reader
+                    .into_f32()
+                    .for_each(|tc| tex_coords.push(Vec2::new(tc[0], tc[1])));
+            }
+
+            let colors: Vec<Vec3> = positions.iter().map(|_| Vec3::ONE).collect();
+            println!("Num indices: {:?}", indices.len());
+            println!("Tex_coords: {:?}", tex_coords.len());
+            println!("Positions: {:?}", positions.len());
+
+            let material = primitive.material();
+            let base_col_option = material.pbr_metallic_roughness().base_color_texture();
+            let base_col_factor = material.pbr_metallic_roughness().base_color_factor();
+            let met_rough = material
+                .pbr_metallic_roughness()
+                .metallic_roughness_texture()
+                .unwrap();
+
+            let mut base_col = -1;
+            if let Some(mat) = base_col_option {
+                base_col = mat.texture().index() as i32;
+            }
+
+            mat_result.base_color = Vec4::from(base_col_factor);
+            mat_result.base_tex_idx = base_col;
+
+            mesh_result.material = mat_result;
+            mesh_result.add_section_from_buffers(
+                &indices,
+                &positions,
+                &normals,
+                &colors,
+                &tex_coords,
+            )
+        }
+        mesh_result
+    }
+
+    pub fn add_ref_tex(&mut self, texture: &'a Texture) {
+        self.texture = Some(texture);
+    }
+
+    pub fn add_section_from_buffers(
+        &mut self,
+        indices: &[u32],
+        positions: &[Vec3],
+        normals: &[Vec3],
+        colors: &[Vec3],
+        tex_coords: &[Vec2],
+    ) {
+        for i in 0..positions.len() {
+            let v = Vertex {
+                position: Vec4::from((positions[i], 1.0)),
+                normal: normals[i],
+                color: colors[i],
+                uv: tex_coords[i],
+            };
+            self.vertices.push(v);
+        }
+
+        self.indices.extend_from_slice(indices);
     }
 }

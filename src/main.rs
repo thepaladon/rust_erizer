@@ -5,22 +5,26 @@ extern crate minifb;
 
 mod camera;
 mod data;
+mod gltf_loader;
 mod input;
 mod mesh;
 mod mouse_diff;
 mod render_utils;
+mod texture;
 mod transform;
 mod triangle;
+mod material;
 
+use gltf_loader::Model;
 use mesh::Mesh;
 use minifb::MouseButton;
 use minifb::MouseMode;
+use texture::Texture;
 use transform::Transform;
 
 use camera::Camera;
 
 use glam::Vec3;
-use image::open;
 use minifb::{Key, Window, WindowOptions};
 use std::time::Instant;
 
@@ -45,13 +49,15 @@ fn main() {
             panic!("{}", e);
         });
 
-    let _tex = open("resources/bojan.jpg").expect("Texture Error: ");
+    let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
 
-    let mut plane = Mesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], &_tex);
-    let mut triangle = Mesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], &_tex);
-    let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &_tex);
-    let mut rhombus = Mesh::from_texture(&data::RHOMBUS_VERTICES, &data::RHOMBUS_INDEX, &_tex);
-    let mut pyramid = Mesh::from_texture(&data::PYRAMID_VERTEX, &data::PYRAMID_INDEX, &_tex);
+    let texture = Texture::from_filepath("resources/textures/bojan.jpg");
+
+    let mut plane = Mesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], &texture);
+    let mut triangle = Mesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], &texture);
+    let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &texture);
+    let mut rhombus = Mesh::from_texture(&data::RHOMBUS_VERTICES, &data::RHOMBUS_INDEX, &texture);
+    let mut pyramid = Mesh::from_texture(&data::PYRAMID_VERTEX, &data::PYRAMID_INDEX, &texture);
 
     // Camera Init
     let mut mouse_camera_controls = true;
@@ -121,15 +127,16 @@ fn main() {
             triangle.next_render_mode();
             rhombus.next_render_mode();
             pyramid.next_render_mode();
+            gltf_obj.next_render_mode();
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
 
         // Render 2 Triangles
-        plane.render_triangle(&mut buffer, &mut depth_buffer, &camera);
-        cube.render_triangle(&mut buffer, &mut depth_buffer, &camera);
-        triangle.render_triangle(&mut buffer, &mut depth_buffer, &camera);
-        rhombus.render_triangle(&mut buffer, &mut depth_buffer, &camera);
-        pyramid.render_triangle(&mut buffer, &mut depth_buffer, &camera);
+        plane.render(&mut buffer, &mut depth_buffer, &camera);
+        triangle.render(&mut buffer, &mut depth_buffer, &camera);
+        rhombus.render(&mut buffer, &mut depth_buffer, &camera);
+        pyramid.render(&mut buffer, &mut depth_buffer, &camera);
+        gltf_obj.render(&mut buffer, &mut depth_buffer, &camera);
 
         //Input
         input::move_camera(&window, &mut camera, dt);

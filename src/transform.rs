@@ -48,7 +48,7 @@ impl Transform {
 
     pub fn from_rotation_euler(euler: Vec3) -> Self {
         Self {
-            rotation: glam::Quat::from_euler(glam::EulerRot::XYZ, euler.x, euler.y, euler.z)
+            rotation: glam::Quat::from_euler(glam::EulerRot::XYZ, euler.x, euler.y, 0.0)
                 .normalize(),
             ..Default::default()
         }

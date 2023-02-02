@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-winapi = "*"
+winapi = "0.3.9"
 minifb = "0.23"
 glam = "0.22.0"
-gltf = "*"
-image = "*"
+gltf = "1.1.0"
+image = "0.24.5"

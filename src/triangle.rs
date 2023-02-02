@@ -2,11 +2,11 @@ use crate::{
     camera::Camera,
     mesh::RenderMode,
     render_utils::{self, edge_fun},
+    texture::Texture,
 };
 
 use super::data::Vertex;
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
-use image::DynamicImage;
 
 #[derive(Copy, Clone)]
 pub struct Triangle {
@@ -80,7 +80,7 @@ impl Triangle {
         color_buff: &mut [u32],
         depth: &mut [f32],
         camera: &Camera,
-        texture: Option<&DynamicImage>,
+        texture: Option<&Texture>,
         color: &Vec3,
         render_type: &RenderMode,
     ) {
@@ -119,9 +119,9 @@ impl Triangle {
 
         //If an AABB exists, check only within that AABB
         if let Some(aabb) = tri.aabb {
-            for x in (aabb[0].x.floor() as i32)..(aabb[1].x.floor() as i32) {
-                for y in (aabb[0].y.floor() as i32)..(aabb[1].y.floor() as i32) {
-                    let p = Vec2::new(x as f32 - 0.5, y as f32 - 0.5);
+            for x in (aabb[0].x as i32)..(aabb[1].x as i32) {
+                for y in (aabb[0].y as i32)..(aabb[1].y as i32) {
+                    let p = Vec2::new(x as f32, y as f32) + 0.5;
                     let idx: usize = x as usize + y as usize * crate::WIDTH;
 
                     let src = color_buff[idx];
@@ -249,7 +249,7 @@ impl Triangle {
         buffer: &mut [u32],
         depth: &mut [f32],
         camera: &Camera,
-        texture: Option<&DynamicImage>,
+        texture: Option<&Texture>,
         color: &Vec3,
         render_type: &RenderMode,
     ) {
@@ -336,7 +336,7 @@ impl Triangle {
         total_area: f32,
         color_buff: &mut [u32],
         z_buffer: &mut [f32],
-        texture: &DynamicImage,
+        texture: &Texture,
         idx: usize,
     ) {
         let v0_uv = self.v[0].uv * rec[0];
@@ -360,24 +360,22 @@ impl Triangle {
             if depth < z_buffer[idx] {
                 z_buffer[idx] = depth;
 
-                let image_buffer = texture.as_rgb8().expect("Shit's not there >:( ");
-
                 let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
                 let uv = uv * correction;
 
                 let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
 
-                let img_width = (image_buffer.width() as f32 - 1.0) * uv.x;
-                let img_height = (image_buffer.height() as f32 - 1.0) * uv.y;
+                let img_width = (texture.width as f32 - 1.0) * uv.x;
+                let img_height = (texture.height as f32 - 1.0) * uv.y;
 
-                if img_width < 0.0 || img_width >= image_buffer.width() as f32 {
+                if img_width < 0.0 || img_width >= texture.width as f32 {
                     panic!("Image WIDTH out of bounds.")
                 }
-                if img_height < 0.0 || img_height >= image_buffer.height() as f32 {
+                if img_height < 0.0 || img_height >= texture.height as f32 {
                     panic!("Image HEIGHT out of bounds.")
                 }
 
-                let color = image_buffer.get_pixel(img_width as u32, img_height as u32);
+                let color = texture.get_pixel(img_width as u32, img_height as u32);
 
                 let fc = Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
 
@@ -396,7 +394,7 @@ impl Triangle {
         total_area: f32,
         color_buff: &mut [u32],
         z_buffer: &mut [f32],
-        texture: &DynamicImage,
+        texture: &Texture,
         idx: usize,
     ) {
         let v0_uv = self.v[0].uv * rec[0];
@@ -423,8 +421,6 @@ impl Triangle {
             if depth < z_buffer[idx] {
                 z_buffer[idx] = depth;
 
-                let image_buffer = texture.as_rgb8().expect("Shit's not there >:( ");
-
                 let v_color = v0_color * bary.x + v1_color * bary.y + v2_color * bary.z;
                 let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
                 let v_color = v_color * correction;
@@ -433,17 +429,17 @@ impl Triangle {
                 let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
                 let v_color = v_color * Vec3::splat(255.0);
 
-                let img_width = (image_buffer.width() as f32 - 1.0) * uv.x;
-                let img_height = (image_buffer.height() as f32 - 1.0) * uv.y;
+                let img_width = (texture.width as f32 - 1.0) * uv.x;
+                let img_height = (texture.height as f32 - 1.0) * uv.y;
 
-                if img_width < 0.0 || img_width >= image_buffer.width() as f32 {
+                if img_width < 0.0 || img_width >= texture.width as f32 {
                     panic!("Image WIDTH out of bounds.")
                 }
-                if img_height < 0.0 || img_height >= image_buffer.height() as f32 {
+                if img_height < 0.0 || img_height >= texture.height as f32 {
                     panic!("Image HEIGHT out of bounds.")
                 }
 
-                let color = image_buffer.get_pixel(img_width as u32, img_height as u32);
+                let color = texture.get_pixel(img_width as u32, img_height as u32);
 
                 let fc =
                     (Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32) + v_color) / 2.0;
@@ -455,7 +451,7 @@ impl Triangle {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn render_pixel_depth(
+    fn render_pixel_bary(
         &self,
         p: Vec2,
         rec: [f32; 3],
@@ -582,7 +578,7 @@ impl Triangle {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn render_pixel_bary(
+    fn render_pixel_depth(
         &self,
         p: Vec2,
         rec: [f32; 3],

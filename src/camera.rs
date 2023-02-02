@@ -30,7 +30,7 @@ pub struct Camera {
 impl Default for Camera {
     fn default() -> Self {
         Self {
-            near_plane: 4.0,
+            near_plane: 0.1,
             far_plane: 100.0,
             fov: f32::to_radians(60.0),
             aspect_ratio: WIDTH as f32 / HEIGHT as f32,
