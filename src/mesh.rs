@@ -1,14 +1,17 @@
+use std::rc::Rc;
+
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
 use crate::{
-    camera::Camera, data::Vertex, texture::Texture, transform::Transform, triangle::Triangle, material::Material,
+    camera::Camera, data::Vertex, material::Material, texture::Texture, transform::Transform,
+    triangle::Triangle,
 };
-
 pub enum RenderMode {
     Color,
     VertexColor,
     Texture,
     TextureColor,
+    Normal,
     Uv,
     Bary,
     Depth,
@@ -22,7 +25,8 @@ impl RenderMode {
             Color => VertexColor,
             VertexColor => Texture,
             Texture => TextureColor,
-            TextureColor => Uv,
+            TextureColor => Normal,
+            Normal => Uv,
             Uv => Bary,
             Bary => Depth,
             Depth => Aabb,
@@ -31,17 +35,16 @@ impl RenderMode {
     }
 }
 
-pub struct Mesh<'a> {
+pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
     pub material: Material,
-    pub texture: Option<&'a Texture>,
+    pub texture: Option<Rc<Texture>>,
     pub transform: Transform,
     pub render_mode: RenderMode,
 }
 
-
-impl<'a> Mesh<'a> {
+impl Mesh {
     //Default Empty Constructor
     pub fn new() -> Self {
         let material = Material {
@@ -54,7 +57,7 @@ impl<'a> Mesh<'a> {
             material,
             texture: None,
             transform: Transform::IDENTITY,
-            render_mode: RenderMode::Bary,
+            render_mode: RenderMode::Texture,
         }
     }
 
@@ -73,7 +76,7 @@ impl<'a> Mesh<'a> {
         }
     }
 
-    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &'a Texture) -> Self {
+    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &Rc<Texture>) -> Self {
         assert!(
             indices.len() % 3 == 0,
             "Indices size is wrong. {} % 3 == 0",
@@ -89,7 +92,7 @@ impl<'a> Mesh<'a> {
             vertices: vertices.to_vec(),
             indices: indices.to_vec(),
             material,
-            texture: Some(texture),
+            texture: Some(texture.clone()),
             transform: Transform::IDENTITY,
             render_mode: RenderMode::Texture,
         }
@@ -131,7 +134,7 @@ impl<'a> Mesh<'a> {
                 buffer,
                 depth,
                 camera,
-                self.texture,
+                self.texture.as_ref(),
                 &self.material.base_color.xyz(),
                 &self.render_mode,
             );
@@ -197,8 +200,8 @@ impl<'a> Mesh<'a> {
         mesh_result
     }
 
-    pub fn add_ref_tex(&mut self, texture: &'a Texture) {
-        self.texture = Some(texture);
+    pub fn add_ref_tex(&mut self, texture: &Rc<Texture>) {
+        self.texture = Some(texture.clone());
     }
 
     pub fn add_section_from_buffers(

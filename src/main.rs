@@ -7,13 +7,14 @@ mod camera;
 mod data;
 mod gltf_loader;
 mod input;
+mod material;
 mod mesh;
 mod mouse_diff;
 mod render_utils;
+mod sampler;
 mod texture;
 mod transform;
 mod triangle;
-mod material;
 
 use gltf_loader::Model;
 use mesh::Mesh;
@@ -26,6 +27,7 @@ use camera::Camera;
 
 use glam::Vec3;
 use minifb::{Key, Window, WindowOptions};
+use std::rc::Rc;
 use std::time::Instant;
 
 use crate::input::enable_mouse;
@@ -49,10 +51,10 @@ fn main() {
             panic!("{}", e);
         });
 
+    // let mut gltf_obj = Model::from_filepath("resources/cube/Cube.gltf");
     let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
 
-    let texture = Texture::from_filepath("resources/textures/bojan.jpg");
-
+    let texture = Rc::new(Texture::from_filepath("resources/textures/bojan.jpg"));
     let mut plane = Mesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], &texture);
     let mut triangle = Mesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], &texture);
     let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &texture);

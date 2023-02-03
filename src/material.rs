@@ -1,6 +1,5 @@
 use glam::Vec4;
 
-
 #[derive(Copy, Clone)]
 pub struct Material {
     pub base_tex_idx: i32,

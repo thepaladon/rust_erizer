@@ -1,11 +1,14 @@
 use glam::Vec3;
 use image::open;
 
+use crate::sampler::Sampler;
+
 #[derive(Default, Clone)]
 pub struct Texture {
     pub width: u32,
     pub height: u32,
     pub data: Vec<u32>,
+    pub sampler: Sampler,
 }
 
 impl Texture {
@@ -14,6 +17,7 @@ impl Texture {
             width: 0,
             height: 0,
             data: Vec::new(),
+            ..Default::default()
         }
     }
 
@@ -33,6 +37,7 @@ impl Texture {
             width,
             height,
             data,
+            ..Default::default()
         }
     }
 

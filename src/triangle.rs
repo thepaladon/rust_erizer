@@ -1,7 +1,10 @@
+use std::rc::Rc;
+
 use crate::{
     camera::Camera,
     mesh::RenderMode,
     render_utils::{self, edge_fun},
+    sampler::*,
     texture::Texture,
 };
 
@@ -80,7 +83,7 @@ impl Triangle {
         color_buff: &mut [u32],
         depth: &mut [f32],
         camera: &Camera,
-        texture: Option<&Texture>,
+        texture: Option<&Rc<Texture>>,
         color: &Vec3,
         render_type: &RenderMode,
     ) {
@@ -154,7 +157,7 @@ impl Triangle {
                             );
                         }
                         RenderMode::Texture => {
-                            if let Some(texture) = texture {
+                            if let Some(texture) = &texture {
                                 tri.render_pixel_texture(
                                     p,
                                     [rec0, rec1, rec2],
@@ -179,7 +182,7 @@ impl Triangle {
                             }
                         }
                         RenderMode::TextureColor => {
-                            if let Some(texture) = texture {
+                            if let Some(texture) = &texture {
                                 tri.render_pixel_tex_col(
                                     p,
                                     [rec0, rec1, rec2],
@@ -238,6 +241,17 @@ impl Triangle {
                         RenderMode::Aabb => {
                             tri.render_aabb(color_buff, idx);
                         }
+                        RenderMode::Normal => {
+                            tri.render_pixel_normal(
+                                p,
+                                [rec0, rec1, rec2],
+                                [sc0, sc1, sc2],
+                                total_area,
+                                color_buff,
+                                depth,
+                                idx,
+                            );
+                        }
                     }
                 }
             }
@@ -249,7 +263,7 @@ impl Triangle {
         buffer: &mut [u32],
         depth: &mut [f32],
         camera: &Camera,
-        texture: Option<&Texture>,
+        texture: Option<&Rc<Texture>>,
         color: &Vec3,
         render_type: &RenderMode,
     ) {
@@ -363,16 +377,19 @@ impl Triangle {
                 let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
                 let uv = uv * correction;
 
-                let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
+                let uv = Triangle::calc_uv_sampler(uv, &texture.sampler);
 
                 let img_width = (texture.width as f32 - 1.0) * uv.x;
                 let img_height = (texture.height as f32 - 1.0) * uv.y;
 
+                //let img_width = f32::clamp(img_width, 0, tex )
+
                 if img_width < 0.0 || img_width >= texture.width as f32 {
-                    panic!("Image WIDTH out of bounds.")
+                    let b = 1.0;
+                    panic!("Image WIDTH out of bounds. Value: {}", img_width);
                 }
                 if img_height < 0.0 || img_height >= texture.height as f32 {
-                    panic!("Image HEIGHT out of bounds.")
+                    panic!("Image HEIGHT out of bounds. Value: {}", img_height)
                 }
 
                 let color = texture.get_pixel(img_width as u32, img_height as u32);
@@ -443,6 +460,51 @@ impl Triangle {
 
                 let fc =
                     (Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32) + v_color) / 2.0;
+
+                color_buff[idx] =
+                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_pixel_normal(
+        &self,
+        p: Vec2,
+        rec: [f32; 3],
+        ssc: [Vec2; 3],
+        total_area: f32,
+        color_buff: &mut [u32],
+        z_buffer: &mut [f32],
+        idx: usize,
+    ) {
+        let v0_normal = self.v[0].normal * rec[0];
+        let v1_normal = self.v[1].normal * rec[1];
+        let v2_normal = self.v[2].normal * rec[2];
+
+        // clock wise check
+        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
+        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
+        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+
+        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
+            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+
+            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+            let correction = 1.0 / correction;
+            let depth = bary.x * self.v[0].position.z
+                + bary.y * self.v[1].position.z
+                + bary.z * self.v[2].position.z;
+
+            if depth < z_buffer[idx] {
+                z_buffer[idx] = depth;
+
+                let normal = v0_normal * bary.x + v1_normal * bary.y + v2_normal * bary.z;
+                let normal = normal * correction;
+
+                let color = normal * Vec3::splat(255.0);
+
+                let fc = Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
 
                 color_buff[idx] =
                     render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
@@ -754,6 +816,21 @@ impl Triangle {
         }
 
         false
+    }
+
+    fn calc_uv_sampler(uv: Vec2, sampler: &Sampler) -> Vec2 {
+        Vec2::new(
+            match sampler.wrap_s {
+                Wrap::ClampToEdge => clamp_to_edge(uv.x),
+                Wrap::Repeat => repeat(uv.x),
+                Wrap::Mirror => mirror(uv.x),
+            },
+            match sampler.wrap_s {
+                Wrap::ClampToEdge => clamp_to_edge(uv.y),
+                Wrap::Repeat => repeat(uv.y),
+                Wrap::Mirror => mirror(uv.y),
+            },
+        )
     }
 
     fn calc_aabb(&mut self, vertices: [Vec2; 3]) {
