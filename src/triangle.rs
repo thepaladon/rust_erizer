@@ -386,15 +386,15 @@ impl Triangle {
 
                 if img_width < 0.0 || img_width >= texture.width as f32 {
                     let b = 1.0;
-                    panic!("Image WIDTH out of bounds. Value: {}", img_width);
+                    panic!("Image WIDTH out of bounds. Value: {img_width}");
                 }
                 if img_height < 0.0 || img_height >= texture.height as f32 {
-                    panic!("Image HEIGHT out of bounds. Value: {}", img_height)
+                    panic!("Image HEIGHT out of bounds. Value: {img_height}")
                 }
 
                 let color = texture.get_pixel(img_width as u32, img_height as u32);
 
-                let fc = Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
+                let fc = Vec3::new(color[0], color[1], color[2]);
 
                 color_buff[idx] =
                     render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
@@ -458,8 +458,7 @@ impl Triangle {
 
                 let color = texture.get_pixel(img_width as u32, img_height as u32);
 
-                let fc =
-                    (Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32) + v_color) / 2.0;
+                let fc = (Vec3::new(color[0], color[1], color[2]) + v_color) / 2.0;
 
                 color_buff[idx] =
                     render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
@@ -504,7 +503,7 @@ impl Triangle {
 
                 let color = normal * Vec3::splat(255.0);
 
-                let fc = Vec3::new(color[0] as f32, color[1] as f32, color[2] as f32);
+                let fc = Vec3::new(color[0], color[1], color[2]);
 
                 color_buff[idx] =
                     render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
