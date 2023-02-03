@@ -160,7 +160,7 @@ impl Mesh {
         }
     }
 
-    pub fn gltf_load_mesh(mesh: &gltf::Mesh, buffers: &[gltf::buffer::Data]) -> Self {
+    pub fn gltf_load_mesh(primitive: &gltf::Primitive, buffers: &[gltf::buffer::Data]) -> Self {
         let mut positions: Vec<Vec3> = Vec::new();
         let mut tex_coords: Vec<Vec2> = Vec::new();
         let mut normals: Vec<Vec3> = Vec::new();
@@ -169,53 +169,46 @@ impl Mesh {
         let mut mesh_result = Mesh::new();
         let mut mat_result = Material::default();
 
-        for primitive in mesh.primitives() {
-            let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
-            if let Some(indices_reader) = reader.read_indices() {
-                indices_reader.into_u32().for_each(|i| indices.push(i));
-            }
-            if let Some(positions_reader) = reader.read_positions() {
-                positions_reader.for_each(|p| positions.push(Vec3::new(p[0], p[1], p[2])));
-            }
-            if let Some(normals_reader) = reader.read_normals() {
-                normals_reader.for_each(|n| normals.push(Vec3::new(n[0], n[1], n[2])));
-            }
-            if let Some(tex_coord_reader) = reader.read_tex_coords(0) {
-                tex_coord_reader
-                    .into_f32()
-                    .for_each(|tc| tex_coords.push(Vec2::new(tc[0], tc[1])));
-            }
-
-            let colors: Vec<Vec3> = positions.iter().map(|_| Vec3::ONE).collect();
-            println!("Num indices: {:?}", indices.len());
-            println!("Tex_coords: {:?}", tex_coords.len());
-            println!("Positions: {:?}", positions.len());
-
-            let material = primitive.material();
-            let base_col_option = material.pbr_metallic_roughness().base_color_texture();
-            let base_col_factor = material.pbr_metallic_roughness().base_color_factor();
-            let met_rough = material
-                .pbr_metallic_roughness()
-                .metallic_roughness_texture()
-                .unwrap();
-
-            let mut base_col = -1;
-            if let Some(mat) = base_col_option {
-                base_col = mat.texture().index() as i32;
-            }
-
-            mat_result.base_color = Vec4::from(base_col_factor);
-            mat_result.base_tex_idx = base_col;
-
-            mesh_result.material = mat_result;
-            mesh_result.add_section_from_buffers(
-                &indices,
-                &positions,
-                &normals,
-                &colors,
-                &tex_coords,
-            )
+        let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+        if let Some(indices_reader) = reader.read_indices() {
+            indices_reader.into_u32().for_each(|i| indices.push(i));
         }
+        if let Some(positions_reader) = reader.read_positions() {
+            positions_reader.for_each(|p| positions.push(Vec3::new(p[0], p[1], p[2])));
+        }
+        if let Some(normals_reader) = reader.read_normals() {
+            normals_reader.for_each(|n| normals.push(Vec3::new(n[0], n[1], n[2])));
+        }
+        if let Some(tex_coord_reader) = reader.read_tex_coords(0) {
+            tex_coord_reader
+                .into_f32()
+                .for_each(|tc| tex_coords.push(Vec2::new(tc[0], tc[1])));
+        }
+
+        let colors: Vec<Vec3> = positions.iter().map(|_| Vec3::ONE).collect();
+        println!("Num indices: {:?}", indices.len());
+        println!("Tex_coords: {:?}", tex_coords.len());
+        println!("Positions: {:?}", positions.len());
+
+        let material = primitive.material();
+        let base_col_option = material.pbr_metallic_roughness().base_color_texture();
+        let base_col_factor = material.pbr_metallic_roughness().base_color_factor();
+        //let met_rough = material
+        //    .pbr_metallic_roughness()
+        //    .metallic_roughness_texture()
+        //    .unwrap();
+
+        let mut base_col = -1;
+        if let Some(mat) = base_col_option {
+            base_col = mat.texture().index() as i32;
+        }
+
+        mat_result.base_color = Vec4::from(base_col_factor);
+        mat_result.base_tex_idx = base_col;
+
+        mesh_result.material = mat_result;
+        mesh_result.add_section_from_buffers(&indices, &positions, &normals, &colors, &tex_coords);
+
         mesh_result
     }
 

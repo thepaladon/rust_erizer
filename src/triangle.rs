@@ -361,8 +361,9 @@ impl Triangle {
         let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
         let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
         let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let m_all_sign = ((area0.to_bits() | area1.to_bits() | area2.to_bits()) >> 31) == 0;
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
+        if m_all_sign {
             let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
             let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
@@ -683,9 +684,9 @@ impl Triangle {
 
     pub fn clip_cull_triangle(tri: &Triangle) -> ClipResult {
         // All triangles not facing the camera are discarded
-        //if Self::cull_triangle_backface([tri.v[0].position, tri.v[1].position, tri.v[2].position]) {
-        //    return ClipResult::Clipped;
-        //}
+        if Self::cull_triangle_backface([tri.v[0].position, tri.v[1].position, tri.v[2].position]) {
+            return ClipResult::Clipped;
+        }
 
         if Self::cull_triangle_view_frustum(tri) {
             ClipResult::Clipped

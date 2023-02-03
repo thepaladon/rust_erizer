@@ -46,25 +46,53 @@ fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let mut depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
 
-    let mut window = Window::new("Hello Triangle", WIDTH, HEIGHT, WindowOptions::default())
+    let mut window = Window::new("Angle's Rust_erizar", WIDTH, HEIGHT, WindowOptions::default())
         .unwrap_or_else(|e| {
             panic!("{}", e);
         });
 
-    // let mut gltf_obj = Model::from_filepath("resources/cube/Cube.gltf");
-    let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
+    
 
     let texture = Rc::new(Texture::from_filepath("resources/textures/bojan.jpg"));
-    let mut plane = Mesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], &texture);
-    let mut triangle = Mesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], &texture);
     let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &texture);
+
+    //Triangle
+    let mut triangle = Mesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], &texture);
+    let tri_trans = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
+    triangle.replace_transform(tri_trans);
+
+    //Plane
+    let mut plane = Mesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], &texture);
+    let plane_trans = Transform::from_translation(Vec3::new(4.0, 0.0, 0.0));
+    plane.replace_transform(plane_trans);
+
+    //Rhombus
     let mut rhombus = Mesh::from_texture(&data::RHOMBUS_VERTICES, &data::RHOMBUS_INDEX, &texture);
+    let rhomb_trans = Transform::from_translation(Vec3::new(0.0, 3.0, 0.0));
+    rhombus.replace_transform(rhomb_trans);
+
+    //Pyramid
     let mut pyramid = Mesh::from_texture(&data::PYRAMID_VERTEX, &data::PYRAMID_INDEX, &texture);
+    let pyramid_trans = Transform::from_translation(Vec3::new(2.0, 3.0, 2.0));
+    pyramid.replace_transform(pyramid_trans);
 
     // Camera Init
     let mut mouse_camera_controls = true;
     let mut camera = Camera::default();
     camera.set_position(Vec3::new(0.0, 0.0, 8.0));
+
+
+    //Sponza
+    let mut gltf_obj = Model::from_filepath("resources/sponza/Sponza.gltf");
+    let sponza_trans = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
+    gltf_obj.replace_transform(sponza_trans);
+    
+    //Cube
+    // let mut gltf_obj = Model::from_filepath("resources/cube/Cube.gltf");
+    
+    // Helmet
+    //let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
+
 
     let mut rotation: f32 = 0.0;
     let mut dmouse = window.get_mouse_pos(MouseMode::Pass).unwrap();
@@ -97,17 +125,6 @@ fn main() {
             0.0,
         ));
 
-        let plane_trans = Transform::from_translation(Vec3::new(4.0, 0.0, 0.0));
-        let rhomb_trans = Transform::from_translation(Vec3::new(0.0, 3.0, 0.0));
-        let pyramid_trans = Transform::from_translation(Vec3::new(2.0, 3.0, 2.0));
-        let tri_trans = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
-
-        plane.replace_transform(plane_trans);
-        gltf_obj.replace_transform(cube_trans);
-        triangle.replace_transform(tri_trans);
-        rhombus.replace_transform(rhomb_trans);
-        pyramid.replace_transform(pyramid_trans);
-
         // Mouse diff for camera rotaiton
         enable_mouse(&window, &mut mouse_camera_controls);
 
@@ -134,31 +151,40 @@ fn main() {
         }
 
         // Render 2 Triangles
-        //cube.render(&mut buffer, &mut depth_buffer, &camera, &Transform::default());
-        plane.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-        triangle.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-        rhombus.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-        pyramid.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
+        // cube.render(
+        //     &mut buffer,
+        //     &mut depth_buffer,
+        //     &camera,
+        //     &Transform::default(),
+        // );
+        // plane.render(
+        //     &mut buffer,
+        //     &mut depth_buffer,
+        //     &camera,
+        //     &Transform::default(),
+        // );
+        // triangle.render(
+        //     &mut buffer,
+        //     &mut depth_buffer,
+        //     &camera,
+        //     &Transform::default(),
+        // );
+        // rhombus.render(
+        //     &mut buffer,
+        //     &mut depth_buffer,
+        //     &camera,
+        //     &Transform::default(),
+        // );
+        // pyramid.render(
+        //     &mut buffer,
+        //     &mut depth_buffer,
+        //     &camera,
+        //     &Transform::default(),
+        // );
+
+        //enable on Cube || Helmet
+        //gltf_obj.replace_transform(cube_trans);
+        
         gltf_obj.render(&mut buffer, &mut depth_buffer, &camera);
 
         //Input
