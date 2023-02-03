@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3, Vec3Swizzles};
+use glam::{Mat4, Vec2, Vec3, Vec3Swizzles};
 
 pub fn edge_fun(p: Vec2, v0: Vec2, v1: Vec2) -> f32 {
     let v0_p = p - v0;
@@ -49,6 +49,37 @@ pub fn barycentric_coordinates(point: Vec2, v0: Vec2, v1: Vec2, v2: Vec2, area: 
     // instead of 3 divisions we can do 1/area *
     let a = 1.0 / area;
     glam::vec3(m0 * a, m1 * a, m2 * a)
+}
+
+pub fn minor(m: Mat4, r0: usize, r1: usize, r2: usize, c0: usize, c1: usize, c2: usize) -> f32 {
+    let m = m.to_cols_array();
+
+    m[4 * r0 + c0] * (m[4 * r1 + c1] * m[4 * r2 + c2] - m[4 * r2 + c1] * m[4 * r1 + c2])
+        - m[4 * r0 + c1] * (m[4 * r1 + c0] * m[4 * r2 + c2] - m[4 * r2 + c0] * m[4 * r1 + c2])
+        + m[4 * r0 + c2] * (m[4 * r1 + c0] * m[4 * r2 + c1] - m[4 * r2 + c0] * m[4 * r1 + c1])
+}
+
+pub fn cofactor(src: Mat4) -> Mat4 {
+    let mut dst = [0.0; 16];
+
+    dst[0] = minor(src, 1, 2, 3, 1, 2, 3);
+    dst[1] = -minor(src, 1, 2, 3, 0, 2, 3);
+    dst[2] = minor(src, 1, 2, 3, 0, 1, 3);
+    dst[3] = -minor(src, 1, 2, 3, 0, 1, 2);
+    dst[4] = -minor(src, 0, 2, 3, 1, 2, 3);
+    dst[5] = minor(src, 0, 2, 3, 0, 2, 3);
+    dst[6] = -minor(src, 0, 2, 3, 0, 1, 3);
+    dst[7] = minor(src, 0, 2, 3, 0, 1, 2);
+    dst[8] = minor(src, 0, 1, 3, 1, 2, 3);
+    dst[9] = -minor(src, 0, 1, 3, 0, 2, 3);
+    dst[10] = minor(src, 0, 1, 3, 0, 1, 3);
+    dst[11] = -minor(src, 0, 1, 3, 0, 1, 2);
+    dst[12] = -minor(src, 0, 1, 2, 1, 2, 3);
+    dst[13] = minor(src, 0, 1, 2, 0, 2, 3);
+    dst[14] = -minor(src, 0, 1, 2, 0, 1, 3);
+    dst[15] = minor(src, 0, 1, 2, 0, 1, 2);
+
+    Mat4::from_cols_array(&dst)
 }
 
 pub fn argb8_to_u32(a: u8, r: u8, g: u8, b: u8) -> u32 {

@@ -3,8 +3,8 @@ use std::rc::Rc;
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
 use crate::{
-    camera::Camera, data::Vertex, material::Material, texture::Texture, transform::Transform,
-    triangle::Triangle,
+    camera::Camera, data::Vertex, material::Material, render_utils, texture::Texture,
+    transform::Transform, triangle::Triangle,
 };
 pub enum RenderMode {
     Color,
@@ -106,8 +106,15 @@ impl Mesh {
         self.render_mode = self.render_mode.next_mode();
     }
 
-    pub fn render(&self, buffer: &mut [u32], depth: &mut [f32], camera: &Camera) {
-        let mvp = camera.perspective() * camera.view() * self.transform.local();
+    pub fn render(
+        &self,
+        buffer: &mut [u32],
+        depth: &mut [f32],
+        camera: &Camera,
+        parent_trans: &Transform,
+    ) {
+        let model = self.transform.local() * parent_trans.local();
+        let mvp = camera.perspective() * camera.view() * model;
 
         for i in (0..self.indices.len()).step_by(3) {
             let tri_idx: [usize; 3] = [
@@ -120,6 +127,14 @@ impl Mesh {
             let clip1 = mvp * self.vertices[tri_idx[1]].position;
             let clip2 = mvp * self.vertices[tri_idx[2]].position;
 
+            //https://github.com/graphitemaster/normals_revisited
+            let norm0 =
+                render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
+            let norm1 =
+                render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
+            let norm2 =
+                render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
+
             let mut copy0 = self.vertices[tri_idx[0]];
             let mut copy1 = self.vertices[tri_idx[1]];
             let mut copy2 = self.vertices[tri_idx[2]];
@@ -127,6 +142,10 @@ impl Mesh {
             copy0.position = clip0;
             copy1.position = clip1;
             copy2.position = clip2;
+
+            copy0.normal = norm0.xyz();
+            copy1.normal = norm1.xyz();
+            copy2.normal = norm2.xyz();
 
             let triangle = Triangle::new([copy0, copy1, copy2]);
 

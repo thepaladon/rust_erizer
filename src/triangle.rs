@@ -122,8 +122,8 @@ impl Triangle {
 
         //If an AABB exists, check only within that AABB
         if let Some(aabb) = tri.aabb {
-            for x in (aabb[0].x as i32)..(aabb[1].x as i32) {
-                for y in (aabb[0].y as i32)..(aabb[1].y as i32) {
+            for x in (aabb[0].x as i32)..=(aabb[1].x as i32) {
+                for y in (aabb[0].y as i32)..=(aabb[1].y as i32) {
                     let p = Vec2::new(x as f32, y as f32) + 0.5;
                     let idx: usize = x as usize + y as usize * crate::WIDTH;
 
@@ -501,6 +501,7 @@ impl Triangle {
                 let normal = v0_normal * bary.x + v1_normal * bary.y + v2_normal * bary.z;
                 let normal = normal * correction;
 
+                let normal = normal + 0.5 * 0.5; //correction for rendering normals ffddirectly
                 let color = normal * Vec3::splat(255.0);
 
                 let fc = Vec3::new(color[0], color[1], color[2]);
@@ -777,30 +778,20 @@ impl Triangle {
 
     pub fn cull_triangle_view_frustum(triangle: &Triangle) -> bool {
         // cull tests against the 6 planes
-        if triangle.v[0].position.x > triangle.v[0].position.w
-            && triangle.v[1].position.x > triangle.v[1].position.w
-            && triangle.v[2].position.x > triangle.v[2].position.w
+        if triangle.v[0].position.x.abs() > triangle.v[0].position.w
+            && triangle.v[1].position.x.abs() > triangle.v[1].position.w
+            && triangle.v[2].position.x.abs() > triangle.v[2].position.w
         {
             return true;
         }
-        if triangle.v[0].position.x < -triangle.v[0].position.w
-            && triangle.v[1].position.x < -triangle.v[1].position.w
-            && triangle.v[2].position.x < -triangle.v[2].position.w
+
+        if triangle.v[0].position.y.abs() > triangle.v[0].position.w
+            && triangle.v[1].position.y.abs() > triangle.v[1].position.w
+            && triangle.v[2].position.y.abs() > triangle.v[2].position.w
         {
             return true;
         }
-        if triangle.v[0].position.y > triangle.v[0].position.w
-            && triangle.v[1].position.y > triangle.v[1].position.w
-            && triangle.v[2].position.y > triangle.v[2].position.w
-        {
-            return true;
-        }
-        if triangle.v[0].position.y < -triangle.v[0].position.w
-            && triangle.v[1].position.y < -triangle.v[1].position.w
-            && triangle.v[2].position.y < -triangle.v[2].position.w
-        {
-            return true;
-        }
+
         if triangle.v[0].position.z > triangle.v[0].position.w
             && triangle.v[1].position.z > triangle.v[1].position.w
             && triangle.v[2].position.z > triangle.v[2].position.w
@@ -848,19 +839,10 @@ impl Triangle {
 
         let mut taabb = [tmin, tmax];
 
-        //check whether it's within the viewport.
-        if taabb[0].x < 0.0 {
-            taabb[0].x = 0.0;
-        }
-        if taabb[0].y < 0.0 {
-            taabb[0].y = 0.0;
-        }
-        if taabb[1].x > crate::WIDTH as f32 {
-            taabb[1].x = crate::WIDTH as f32 - 1.0;
-        }
-        if taabb[1].y > crate::HEIGHT as f32 {
-            taabb[1].y = crate::HEIGHT as f32 - 1.0;
-        }
+        taabb[0].x = taabb[0].x.max(0.0);
+        taabb[0].y = taabb[0].y.max(0.0);
+        taabb[1].x = taabb[1].x.min(crate::WIDTH as f32 - 1.0);
+        taabb[1].y = taabb[1].y.min(crate::HEIGHT as f32 - 1.0);
 
         self.aabb = Some(taabb);
     }

@@ -1,11 +1,15 @@
 use std::rc::Rc;
 
-use crate::{camera::Camera, mesh::Mesh, render_utils::rgba8_to_u32, texture::Texture};
+use crate::{
+    camera::Camera, mesh::Mesh, render_utils::rgba8_to_u32, texture::Texture, transform::Transform,
+};
 use gltf::{self, Gltf};
 
 pub struct Model {
     pub meshes: Vec<Mesh>,
     pub textures: Vec<Rc<Texture>>,
+
+    transform: Transform,
 }
 
 impl Model {
@@ -13,6 +17,7 @@ impl Model {
         Self {
             meshes: Vec::new(),
             textures: Vec::new(),
+            transform: Transform::IDENTITY,
         }
     }
 
@@ -77,7 +82,7 @@ impl Model {
 
     pub fn render(&self, buffer: &mut [u32], depth: &mut [f32], camera: &Camera) {
         for mesh in &self.meshes {
-            mesh.render(buffer, depth, camera)
+            mesh.render(buffer, depth, camera, &self.transform)
         }
     }
 
@@ -85,5 +90,9 @@ impl Model {
         for mesh in &mut self.meshes {
             mesh.next_render_mode();
         }
+    }
+
+    pub fn replace_transform(&mut self, trans: Transform) {
+        self.transform = trans;
     }
 }

@@ -5,10 +5,10 @@ extern crate minifb;
 
 mod camera;
 mod data;
-mod gltf_loader;
 mod input;
 mod material;
 mod mesh;
+mod model;
 mod mouse_diff;
 mod render_utils;
 mod sampler;
@@ -16,10 +16,10 @@ mod texture;
 mod transform;
 mod triangle;
 
-use gltf_loader::Model;
 use mesh::Mesh;
 use minifb::MouseButton;
 use minifb::MouseMode;
+use model::Model;
 use texture::Texture;
 use transform::Transform;
 
@@ -103,7 +103,7 @@ fn main() {
         let tri_trans = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
 
         plane.replace_transform(plane_trans);
-        cube.replace_transform(cube_trans);
+        gltf_obj.replace_transform(cube_trans);
         triangle.replace_transform(tri_trans);
         rhombus.replace_transform(rhomb_trans);
         pyramid.replace_transform(pyramid_trans);
@@ -134,10 +134,31 @@ fn main() {
         }
 
         // Render 2 Triangles
-        plane.render(&mut buffer, &mut depth_buffer, &camera);
-        triangle.render(&mut buffer, &mut depth_buffer, &camera);
-        rhombus.render(&mut buffer, &mut depth_buffer, &camera);
-        pyramid.render(&mut buffer, &mut depth_buffer, &camera);
+        //cube.render(&mut buffer, &mut depth_buffer, &camera, &Transform::default());
+        plane.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
+        triangle.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
+        rhombus.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
+        pyramid.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
         gltf_obj.render(&mut buffer, &mut depth_buffer, &camera);
 
         //Input
