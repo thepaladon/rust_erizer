@@ -68,13 +68,13 @@ impl Model {
             for node in scene.nodes() {
                 if let Some(mesh) = node.mesh() {
                     for primitive in mesh.primitives() {
-
                         let mut my_mesh = Mesh::gltf_load_mesh(&primitive, &buffers);
                         if my_mesh.material.base_tex_idx != -1 {
                             my_mesh.texture = Some(
                                 model.textures[my_mesh.material.base_tex_idx as usize].clone(),
                             );
                         }
+
                         model.meshes.push(my_mesh);
                     }
                 }

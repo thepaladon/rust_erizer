@@ -70,17 +70,21 @@ impl Transform {
     }
 
     pub fn local(&self) -> Mat4 {
-        let mut matrix = Mat4::IDENTITY;
-        matrix *= Mat4::from_translation(self.translation);
+        let mut matrix = Mat4::from_translation(self.translation);
         matrix *= Mat4::from_quat(self.rotation);
         matrix *= Mat4::from_scale(self.scale);
         matrix
     }
 
     pub fn add_rotation(&mut self, euler: Vec3) {
-        let rot =
-            glam::Quat::from_euler(glam::EulerRot::XYZ, euler.x, euler.y, euler.z).normalize();
-        self.rotation *= rot;
+        let pitch = Quat::from_axis_angle(Vec3::X, euler.x);
+        let yaw = Quat::from_axis_angle(Vec3::Y, euler.y);
+        let roll = Quat::from_axis_angle(Vec3::Z, euler.z);
+        let orientation = pitch * yaw * roll;
+
+        //let rot = Quat::from_euler(glam::EulerRot::XYZ, euler.x,euler.y, euler.z );
+        self.rotation *= orientation;
+        self.rotation = self.rotation.normalize();
     }
 
     pub fn forward(&self) -> Vec3 {

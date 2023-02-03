@@ -46,12 +46,15 @@ fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let mut depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
 
-    let mut window = Window::new("Angle's Rust_erizar", WIDTH, HEIGHT, WindowOptions::default())
-        .unwrap_or_else(|e| {
-            panic!("{}", e);
-        });
-
-    
+    let mut window = Window::new(
+        "Angle's Rust_erizar",
+        WIDTH,
+        HEIGHT,
+        WindowOptions::default(),
+    )
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
 
     let texture = Rc::new(Texture::from_filepath("resources/textures/bojan.jpg"));
     let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &texture);
@@ -81,18 +84,16 @@ fn main() {
     let mut camera = Camera::default();
     camera.set_position(Vec3::new(0.0, 0.0, 8.0));
 
-
     //Sponza
-    let mut gltf_obj = Model::from_filepath("resources/sponza/Sponza.gltf");
-    let sponza_trans = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
-    gltf_obj.replace_transform(sponza_trans);
-    
+    //let mut gltf_obj = Model::from_filepath("resources/sponza/Sponza.gltf");
+    //let sponza_trans = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
+    //gltf_obj.replace_transform(sponza_trans);
+
     //Cube
     // let mut gltf_obj = Model::from_filepath("resources/cube/Cube.gltf");
-    
-    // Helmet
-    //let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
 
+    // Helmet
+    let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
 
     let mut rotation: f32 = 0.0;
     let mut dmouse = window.get_mouse_pos(MouseMode::Pass).unwrap();
@@ -133,9 +134,8 @@ fn main() {
             let mut mouse_diff =
                 mouse_diff::mouse_diff_fn(&window, &mut ignore_mouse, &mut dmouse, dt);
             mouse_diff *= camera.sensitivity;
-            camera
-                .transform
-                .add_rotation(Vec3::new(mouse_diff.y, mouse_diff.x, 0.0));
+
+            camera.mouse_rotation(mouse_diff.y, mouse_diff.x);
         } else {
             window.set_cursor_visibility(true);
         }
@@ -151,40 +151,39 @@ fn main() {
         }
 
         // Render 2 Triangles
-        // cube.render(
-        //     &mut buffer,
-        //     &mut depth_buffer,
-        //     &camera,
-        //     &Transform::default(),
-        // );
-        // plane.render(
-        //     &mut buffer,
-        //     &mut depth_buffer,
-        //     &camera,
-        //     &Transform::default(),
-        // );
-        // triangle.render(
-        //     &mut buffer,
-        //     &mut depth_buffer,
-        //     &camera,
-        //     &Transform::default(),
-        // );
-        // rhombus.render(
-        //     &mut buffer,
-        //     &mut depth_buffer,
-        //     &camera,
-        //     &Transform::default(),
-        // );
-        // pyramid.render(
-        //     &mut buffer,
-        //     &mut depth_buffer,
-        //     &camera,
-        //     &Transform::default(),
-        // );
+        cube.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
+        plane.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
+        triangle.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
+        rhombus.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
+        pyramid.render(
+            &mut buffer,
+            &mut depth_buffer,
+            &camera,
+            &Transform::default(),
+        );
 
         //enable on Cube || Helmet
-        //gltf_obj.replace_transform(cube_trans);
-        
+        gltf_obj.replace_transform(cube_trans);
         gltf_obj.render(&mut buffer, &mut depth_buffer, &camera);
 
         //Input

@@ -684,9 +684,9 @@ impl Triangle {
 
     pub fn clip_cull_triangle(tri: &Triangle) -> ClipResult {
         // All triangles not facing the camera are discarded
-        if Self::cull_triangle_backface([tri.v[0].position, tri.v[1].position, tri.v[2].position]) {
-            return ClipResult::Clipped;
-        }
+        //if Self::cull_triangle_backface([tri.v[0].position, tri.v[1].position, tri.v[2].position]) {
+        //    return ClipResult::Clipped;
+        //}
 
         if Self::cull_triangle_view_frustum(tri) {
             ClipResult::Clipped
