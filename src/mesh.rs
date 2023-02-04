@@ -94,7 +94,9 @@ impl Mesh {
         [min, max]
     }
 
-    fn cull_mesh_frustum(&self, mvp: Mat4) -> bool {
+
+
+    fn cull_mesh_frustum(&self, camera: &Camera, mvp: Mat4) -> bool {
         let min = mvp * Vec4::from((self.aa_bb.unwrap()[0], 1.0));
         let max = mvp * Vec4::from((self.aa_bb.unwrap()[1], 1.0));
 
@@ -122,7 +124,83 @@ impl Mesh {
             return false;
         }
 
+        let planes = &Self::get_planes_from_camera(camera);
+        Self::box_in_frustum(planes, &[min, max])
+    }
+
+
+    fn is_aabb_inside_frustum(frustum_planes: &[Vec4 ; 6], aabb: &[Vec4; 2]) -> bool {
+        for plane in frustum_planes {
+            let x = if plane.x >= 0.0 { aabb[1].x } else { aabb[0].x };
+            let y = if plane.y >= 0.0 { aabb[1].y } else { aabb[0].y };
+            let z = if plane.z >= 0.0 { aabb[1].z } else { aabb[0].z };
+            let w = if plane.w >= 0.0 { aabb[1].w } else { aabb[0].w };
+            let distance = x * plane.x + y * plane.y + z * plane.z + w * plane.w;
+            if distance < 0.0 {
+                return false;
+            }
+        }
         true
+    
+    }
+    
+
+    #[rustfmt::skip]
+    // false if fully outside, true if inside or intersects
+    pub fn  box_in_frustum( fru : &[Vec4 ; 6],  aabb : &[Vec4 ; 2]) -> bool
+    {
+        // check box outside/inside of frustum
+        for i in 0..6
+        {
+            let mut out = 0;
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[0].x, aabb[0].y, aabb[0].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[1].x, aabb[0].y, aabb[0].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[0].x, aabb[1].y, aabb[0].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[1].x, aabb[1].y, aabb[0].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[0].x, aabb[0].y, aabb[1].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[1].x, aabb[0].y, aabb[1].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[0].x, aabb[1].y, aabb[1].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            out += if Vec4::dot( fru[i], Vec4::new(aabb[1].x, aabb[1].y, aabb[1].z, aabb[0].w) ) < 0.0  { 1} else  {0};
+            if out==8 {return false};
+        }
+
+        // check frustum outside/inside box
+        //let mut out = 0;
+        //out=0; for i in 0..8 { out += if fru[i].x > aabb[1].x  { 1 } else { 0 }; if  out==8  {return false;} }
+        //out=0; for i in 0..8 { out += if fru[i].x < aabb[0].x  { 1 } else { 0 }; if  out==8  {return false;} }
+        //out=0; for i in 0..8 { out += if fru[i].y > aabb[1].y  { 1 } else { 0 }; if  out==8  {return false;} }
+        //out=0; for i in 0..8 { out += if fru[i].y < aabb[0].y  { 1 } else { 0 }; if  out==8  {return false;} }
+        //out=0; for i in 0..8 { out += if fru[i].z > aabb[1].z  { 1 } else { 0 }; if  out==8  {return false;} }
+        //out=0; for i in 0..8 { out += if fru[i].z < aabb[0].z  { 1 } else { 0 }; if  out==8  {return false;} }
+
+        return true;
+    }
+
+    fn get_planes_from_camera(camera: &Camera) -> [Vec4; 6] {
+        let projection_matrix = camera.perspective();
+        let clip_space_matrix = projection_matrix * camera.view();
+
+        let mut planes = [Vec4::ZERO; 6];
+
+        // Left Plane
+        planes[0] = clip_space_matrix.row(3) + clip_space_matrix.row(0);
+
+        // Right Plane
+        planes[1] = clip_space_matrix.row(3) - clip_space_matrix.row(0);
+
+        // Top Plane
+        planes[2] = clip_space_matrix.row(3) - clip_space_matrix.row(1);
+
+        // Bottom Plane
+        planes[3] = clip_space_matrix.row(3) + clip_space_matrix.row(1);
+
+        // Near Plane
+        planes[4] = clip_space_matrix.row(3) + clip_space_matrix.row(2);
+
+        // Far Plane
+        planes[5] = clip_space_matrix.row(3) - clip_space_matrix.row(2);
+
+        planes
     }
 
     pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &Rc<Texture>) -> Self {
@@ -168,7 +246,7 @@ impl Mesh {
         let model = self.transform.local() * parent_trans.local();
         let mvp = camera.perspective() * camera.view() * model;
 
-        if self.cull_mesh_frustum(mvp) {
+        if self.cull_mesh_frustum(camera, mvp) {
             //dbg!("RENDERING POG");
             for i in (0..self.indices.len()).step_by(3) {
                 let tri_idx: [usize; 3] = [
