@@ -8,7 +8,7 @@ pub fn change_fov(window: &Window, camera: &mut Camera, dt: f32) {
     camera.add_fov(-dir.1 * dt);
 }
 
-fn set_mouse_pos(x: i32, y: i32) -> Result<(), String> {
+pub fn set_mouse_pos(x: i32, y: i32) -> Result<(), String> {
     unsafe {
         if winapi::um::winuser::SetCursorPos(x, y) == 0 {
             Err("SetCursorPos failed".into())

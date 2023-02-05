@@ -12,25 +12,31 @@ mod model;
 mod mouse_diff;
 mod render_utils;
 mod sampler;
+mod sliced_buffer;
 mod texture;
 mod transform;
 mod triangle;
 
+use jobsys::JobScope;
+use jobsys::JobSystem;
 use mesh::Mesh;
 use minifb::MouseButton;
 use minifb::MouseMode;
 use model::Model;
+use sliced_buffer::SlicedBuffers;
 use texture::Texture;
 use transform::Transform;
 
 use camera::Camera;
 
+use core::slice;
 use glam::Vec3;
 use minifb::{Key, Window, WindowOptions};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use crate::input::enable_mouse;
+use crate::mouse_diff::set_mouse_pos;
 
 const _RED: Vec3 = Vec3::new(255.0, 0.0, 0.0);
 const _GREEN: Vec3 = Vec3::new(0.0, 255.0, 0.0);
@@ -46,6 +52,8 @@ fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let mut depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
 
+    let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, 4);
+
     let mut window = Window::new(
         "Angle's Rust_erizar",
         WIDTH,
@@ -56,7 +64,7 @@ fn main() {
         panic!("{}", e);
     });
 
-    let texture = Rc::new(Texture::from_filepath("resources/textures/bojan.jpg"));
+    let texture = Arc::new(Texture::from_filepath("resources/textures/bojan.jpg"));
     let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &texture);
 
     //Triangle
@@ -102,10 +110,16 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(0)));
     window.set_cursor_visibility(false);
 
-    let mut ignore_mouse = true;
+    let mut ignore_mouse = false;
+    let mut first_frame = true;
 
     let mut prev_dt = Instant::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let thread_count = 4_usize;
+        let job_capacity = 512_usize;
+        let job_sys = JobSystem::new(thread_count, job_capacity).unwrap();
+        let job_scope = JobScope::new_from_system(&job_sys);
+
         //Delta Time
         let now = Instant::now();
         let dt = now.duration_since(prev_dt).as_secs_f32();
@@ -114,8 +128,12 @@ fn main() {
         //Clear buffers
         let clear_color =
             render_utils::argb8_to_u32(255, _BLACK.x as u8, _BLACK.y as u8, _BLACK.z as u8);
-        buffer.fill(clear_color);
-        depth_buffer.fill(f32::INFINITY);
+
+        sliced_buffers.clear_color(clear_color);
+        sliced_buffers.clear_depth(f32::INFINITY);
+
+        //buffer.fill(clear_color);
+        //depth_buffer.fill(f32::INFINITY);
 
         //Rotate object on screen
         rotation += 0.01;
@@ -127,17 +145,24 @@ fn main() {
         ));
 
         // Mouse diff for camera rotaiton
-        enable_mouse(&window, &mut mouse_camera_controls);
+        if !first_frame {
+            enable_mouse(&window, &mut mouse_camera_controls);
 
-        if mouse_camera_controls {
-            window.set_cursor_visibility(false);
-            let mut mouse_diff =
-                mouse_diff::mouse_diff_fn(&window, &mut ignore_mouse, &mut dmouse, dt);
-            mouse_diff *= camera.sensitivity;
+            if mouse_camera_controls {
+                window.set_cursor_visibility(false);
+                let mut mouse_diff =
+                    mouse_diff::mouse_diff_fn(&window, &mut ignore_mouse, &mut dmouse, dt);
+                mouse_diff *= camera.sensitivity;
 
-            camera.mouse_rotation(mouse_diff.y, mouse_diff.x);
+                camera.mouse_rotation(mouse_diff.y, mouse_diff.x);
+            } else {
+                window.set_cursor_visibility(true);
+            }
         } else {
-            window.set_cursor_visibility(true);
+            set_mouse_pos(
+                window.get_position().0 as i32 + 5,
+                window.get_position().1 as i32 + 5,
+            );
         }
 
         if window.get_mouse_down(MouseButton::Left) {
@@ -150,49 +175,33 @@ fn main() {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
 
-        // Render 2 Triangles
-        cube.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-        plane.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-        triangle.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-        rhombus.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-        pyramid.render(
-            &mut buffer,
-            &mut depth_buffer,
-            &camera,
-            &Transform::default(),
-        );
-
-        //enable on Cube || Helmet
         gltf_obj.replace_transform(cube_trans);
-        gltf_obj.render(&mut buffer, &mut depth_buffer, &camera);
 
+        // JobInstance::create(&job_scope, || {
+        gltf_obj.render(&mut sliced_buffers, &camera);
+
+        // }).unwrap();
+
+        cube.render(&mut sliced_buffers, &camera, &Transform::default());
+        plane.render(&mut sliced_buffers, &camera, &Transform::default());
+        triangle.render(&mut sliced_buffers, &camera, &Transform::default());
+        rhombus.render(&mut sliced_buffers, &camera, &Transform::default());
+        pyramid.render(&mut sliced_buffers, &camera, &Transform::default());
+
+        //All triangles should have their vertices in screen space here
+        sliced_buffers.aa_bb_comparison();
+
+        sliced_buffers.render(&camera, &cube.render_mode, &job_scope);
+        
+        buffer = sliced_buffers.transfer_buffer();
+        
         //Input
         input::move_camera(&window, &mut camera, dt);
         mouse_diff::change_fov(&window, &mut camera, dt);
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
-
+        first_frame = false;
         println!("Time elapsed: {:?}", now.elapsed());
     }
 }

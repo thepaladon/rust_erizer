@@ -1,10 +1,10 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use glam::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 
 use crate::{
-    camera::Camera, data::Vertex, material::Material, render_utils, texture::Texture,
-    transform::Transform, triangle::Triangle,
+    camera::Camera, data::Vertex, material::Material, render_utils, sliced_buffer::SlicedBuffers,
+    texture::Texture, transform::Transform, triangle::Triangle,
 };
 pub enum RenderMode {
     Color,
@@ -39,7 +39,7 @@ pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
     pub material: Material,
-    pub texture: Option<Rc<Texture>>,
+    pub texture: Option<Arc<Texture>>,
     pub transform: Transform,
     pub render_mode: RenderMode,
     pub aa_bb: Option<[Vec3; 2]>,
@@ -110,22 +110,22 @@ impl Mesh {
             return false;
         }
 
-        // Check if the object is outside to the left or right
-        if min.x.abs() > min.w && max.x.abs() > max.w {
-            // dbg!("Left/Right Culling");
-            return false;
-        }
+        //// Check if the object is outside to the left or right
+        //if min.x.abs() > min.w && max.x.abs() > max.w {
+        //    // dbg!("Left/Right Culling");
+        //    return false;
+        //}
 
-        // Check if the object is outside up or down
-        if min.y.abs() > min.w && max.y.abs() > max.w {
-            // dbg!("Up/Down Culling");
-            return false;
-        }
+        //// Check if the object is outside up or down
+        //if min.y.abs() > min.w && max.y.abs() > max.w {
+        //    // dbg!("Up/Down Culling");
+        //    return false;
+        //}
 
         true
     }
 
-    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &Rc<Texture>) -> Self {
+    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &Arc<Texture>) -> Self {
         assert!(
             indices.len() % 3 == 0,
             "Indices size is wrong. {} % 3 == 0",
@@ -160,8 +160,7 @@ impl Mesh {
 
     pub fn render(
         &self,
-        buffer: &mut [u32],
-        depth: &mut [f32],
+        slice_buff: &mut SlicedBuffers,
         camera: &Camera,
         parent_trans: &Transform,
     ) {
@@ -169,7 +168,6 @@ impl Mesh {
         let mvp = camera.perspective() * camera.view() * model;
 
         if self.cull_mesh_frustum(mvp) {
-            //dbg!("RENDERING POG");
             for i in (0..self.indices.len()).step_by(3) {
                 let tri_idx: [usize; 3] = [
                     self.indices[i] as usize,
@@ -204,8 +202,7 @@ impl Mesh {
                 let triangle = Triangle::new([copy0, copy1, copy2]);
 
                 triangle.render_triangle(
-                    buffer,
-                    depth,
+                    slice_buff,
                     camera,
                     self.texture.as_ref(),
                     &self.material.base_color.xyz(),
@@ -271,7 +268,7 @@ impl Mesh {
         mesh_result
     }
 
-    pub fn add_ref_tex(&mut self, texture: &Rc<Texture>) {
+    pub fn add_ref_tex(&mut self, texture: &Arc<Texture>) {
         self.texture = Some(texture.clone());
     }
 

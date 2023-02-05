@@ -1,20 +1,25 @@
-use std::rc::Rc;
+use core::slice;
+use std::{rc::Rc, sync::Arc};
 
 use crate::{
     camera::Camera,
     mesh::RenderMode,
     render_utils::{self, edge_fun},
     sampler::*,
+    sliced_buffer::SlicedBuffers,
     texture::Texture,
 };
 
 use super::data::Vertex;
-use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
+use glam::{IVec2, Vec2, Vec3, Vec4, Vec4Swizzles};
 
 #[derive(Copy, Clone)]
 pub struct Triangle {
     pub v: [Vertex; 3],
-    pub aabb: Option<[Vec2; 2]>,
+    pub rec: [f32; 3],  //Perspective Correction Coords
+    pub scc: [Vec2; 3], //screen coordinates
+    pub total_area: f32,
+    pub aabb: Option<[Vec2; 2]>, // 0 -> min / 1 -> max
 }
 
 #[allow(clippy::upper_case_acronyms)]
@@ -38,6 +43,9 @@ impl Triangle {
         Self {
             v: vertices,
             aabb: None,
+            rec: [0.0, 0.0, 0.0],
+            scc: [Vec2::splat(0.0); 3],
+            total_area: 0.0,
         }
     }
 
@@ -80,10 +88,8 @@ impl Triangle {
 
     pub fn render_clipped_triangle(
         triangle: &Triangle,
-        color_buff: &mut [u32],
-        depth: &mut [f32],
-        camera: &Camera,
-        texture: Option<&Rc<Texture>>,
+        slice_buff: &mut SlicedBuffers,
+        texture: Option<&Arc<Texture>>,
         color: &Vec3,
         render_type: &RenderMode,
     ) {
@@ -119,139 +125,302 @@ impl Triangle {
         tri.v[0].position = ndc0;
         tri.v[1].position = ndc1;
         tri.v[2].position = ndc2;
+        
+        tri.rec[0] = rec0;
+        tri.rec[1] = rec1;
+        tri.rec[2] = rec2;
+        
+        tri.scc[0] = sc0;
+        tri.scc[1] = sc1;
+        tri.scc[2] = sc2;
+        
+        tri.total_area = total_area;
 
-        //If an AABB exists, check only within that AABB
-        if let Some(aabb) = tri.aabb {
-            for x in (aabb[0].x as i32)..=(aabb[1].x as i32) {
-                for y in (aabb[0].y as i32)..=(aabb[1].y as i32) {
-                    let p = Vec2::new(x as f32, y as f32) + 0.5;
-                    let idx: usize = x as usize + y as usize * crate::WIDTH;
+        //I need to add the triangles here to some sort of VECTOR
+        slice_buff.triangles.push(tri);
 
-                    let src = color_buff[idx];
-                    let src = render_utils::u32_to_argb8(src);
+        // //If an AABB exists, check only within that AABB
+        // if let Some(aabb) = tri.aabb {
+        //     for x in (aabb[0].x as i32)..=(aabb[1].x as i32) {
+        //         for y in (aabb[0].y as i32)..=(aabb[1].y as i32) {
+        //             //Fragment Shader
+        //             let p = Vec2::new(x as f32, y as f32) + 0.5;
+        //             let idx: usize = x as usize + y as usize * crate::WIDTH;
 
-                    let fc = Vec3::new(src[1] as f32, src[2] as f32, src[3] as f32); //final color
+        //             let src = color_buff[idx];
+        //             let src = render_utils::u32_to_argb8(src);
 
-                    match render_type {
-                        RenderMode::Color => {
-                            tri.render_pixel_color(
+        //             let fc = Vec3::new(src[1] as f32, src[2] as f32, src[3] as f32); //final color
+
+        //             match render_type {
+        //                 RenderMode::Color => {
+        //                     tri.render_pixel_color(
+        //                         p,
+        //                         [rec0, rec1, rec2],
+        //                         [sc0, sc1, sc2],
+        //                         total_area,
+        //                         color_buff,
+        //                         depth,
+        //                         color,
+        //                         idx,
+        //                     );
+        //                 }
+        //                 RenderMode::VertexColor => {
+        //                     tri.render_pixel_vertex_col(
+        //                         p,
+        //                         [rec0, rec1, rec2],
+        //                         [sc0, sc1, sc2],
+        //                         total_area,
+        //                         color_buff,
+        //                         depth,
+        //                         idx,
+        //                     );
+        //                 }
+        //                 RenderMode::Texture => {
+        //                     if let Some(texture) = &texture {
+        //                         tri.render_pixel_texture(
+        //                             p,
+        //                             [rec0, rec1, rec2],
+        //                             [sc0, sc1, sc2],
+        //                             total_area,
+        //                             color_buff,
+        //                             depth,
+        //                             texture,
+        //                             idx,
+        //                         );
+        //                     } else {
+        //                         tri.render_pixel_color(
+        //                             p,
+        //                             [rec0, rec1, rec2],
+        //                             [sc0, sc1, sc2],
+        //                             total_area,
+        //                             color_buff,
+        //                             depth,
+        //                             &Vec3::new(255.0, 0.0, 255.0), //error color
+        //                             idx,
+        //                         );
+        //                     }
+        //                 }
+        //                 RenderMode::TextureColor => {
+        //                     if let Some(texture) = &texture {
+        //                         tri.render_pixel_tex_col(
+        //                             p,
+        //                             [rec0, rec1, rec2],
+        //                             [sc0, sc1, sc2],
+        //                             total_area,
+        //                             color_buff,
+        //                             depth,
+        //                             texture,
+        //                             idx,
+        //                         );
+        //                     } else {
+        //                         tri.render_pixel_vertex_col(
+        //                             p,
+        //                             [rec0, rec1, rec2],
+        //                             [sc0, sc1, sc2],
+        //                             total_area,
+        //                             color_buff,
+        //                             depth,
+        //                             idx,
+        //                         );
+        //                     }
+        //                 }
+        //                 RenderMode::Uv => {
+        //                     tri.render_pixel_uv(
+        //                         p,
+        //                         [rec0, rec1, rec2],
+        //                         [sc0, sc1, sc2],
+        //                         total_area,
+        //                         color_buff,
+        //                         depth,
+        //                         idx,
+        //                     );
+        //                 }
+        //                 RenderMode::Bary => {
+        //                     tri.render_pixel_bary(
+        //                         p,
+        //                         [rec0, rec1, rec2],
+        //                         [sc0, sc1, sc2],
+        //                         total_area,
+        //                         color_buff,
+        //                         depth,
+        //                         idx,
+        //                     );
+        //                 }
+        //                 RenderMode::Depth => {
+        //                     tri.render_pixel_depth(
+        //                         p,
+        //                         [rec0, rec1, rec2],
+        //                         [sc0, sc1, sc2],
+        //                         total_area,
+        //                         color_buff,
+        //                         depth,
+        //                         idx,
+        //                     );
+        //                 }
+        //                 RenderMode::Aabb => {
+        //                     tri.render_aabb(color_buff, idx);
+        //                 }
+        //                 RenderMode::Normal => {
+        //                     tri.render_pixel_normal(
+        //                         p,
+        //                         [rec0, rec1, rec2],
+        //                         [sc0, sc1, sc2],
+        //                         total_area,
+        //                         color_buff,
+        //                         depth,
+        //                         idx,
+        //                     );
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+    }
+
+    pub fn render_fragments(
+        &self,
+        pos: IVec2,
+        size: IVec2,
+        color_buff: &mut [u32],
+        depth_buff: &mut [f32],
+        texture: Option<&Arc<Texture>>,
+        color: &Vec3,
+        render_type: &RenderMode,
+    ) {
+        for idx_x in 0..size.x {
+            for idx_y in 0..size.y {
+
+                let x = pos.x + idx_x;
+                let y = pos.y + idx_y;
+                //Fragment Shader
+                let p = Vec2::new(x as f32, y as f32) + 0.5;
+                let idx: usize = (idx_x + idx_y * size.x) as usize;
+
+                let src = color_buff[idx];
+                let src = render_utils::u32_to_argb8(src);
+
+                let fc = Vec3::new(src[1] as f32, src[2] as f32, src[3] as f32); //final color
+
+                match render_type {
+                    RenderMode::Color => {
+                        self.render_pixel_color(
+                            p,
+                            self.rec,
+                            self.scc,
+                            self.total_area,
+                            color_buff,
+                            depth_buff,
+                            color,
+                            idx,
+                        );
+                    }
+                    RenderMode::VertexColor => {
+                        self.render_pixel_vertex_col(
+                            p,
+                            self.rec,
+                            self.scc,
+                            self.total_area,
+                            color_buff,
+                            depth_buff,
+                            idx,
+                        );
+                    }
+                    RenderMode::Texture => {
+                        if let Some(texture) = &texture {
+                            self.render_pixel_texture(
                                 p,
-                                [rec0, rec1, rec2],
-                                [sc0, sc1, sc2],
-                                total_area,
+                                self.rec,
+                                self.scc,
+                                self.total_area,
                                 color_buff,
-                                depth,
-                                color,
+                                depth_buff,
+                                &texture,
+                                idx,
+                            );
+                        } else {
+                            self.render_pixel_color(
+                                p,
+                                self.rec,
+                                self.scc,
+                                self.total_area,
+                                color_buff,
+                                depth_buff,
+                                &Vec3::new(255.0, 0.0, 255.0), //error color
                                 idx,
                             );
                         }
-                        RenderMode::VertexColor => {
-                            tri.render_pixel_vertex_col(
+                    }
+                    RenderMode::TextureColor => {
+                        if let Some(texture) = &texture {
+                            self.render_pixel_tex_col(
                                 p,
-                                [rec0, rec1, rec2],
-                                [sc0, sc1, sc2],
-                                total_area,
+                                self.rec,
+                                self.scc,
+                                self.total_area,
                                 color_buff,
-                                depth,
+                                depth_buff,
+                                texture,
+                                idx,
+                            );
+                        } else {
+                            self.render_pixel_vertex_col(
+                                p,
+                                self.rec,
+                                self.scc,
+                                self.total_area,
+                                color_buff,
+                                depth_buff,
                                 idx,
                             );
                         }
-                        RenderMode::Texture => {
-                            if let Some(texture) = &texture {
-                                tri.render_pixel_texture(
-                                    p,
-                                    [rec0, rec1, rec2],
-                                    [sc0, sc1, sc2],
-                                    total_area,
-                                    color_buff,
-                                    depth,
-                                    texture,
-                                    idx,
-                                );
-                            } else {
-                                tri.render_pixel_color(
-                                    p,
-                                    [rec0, rec1, rec2],
-                                    [sc0, sc1, sc2],
-                                    total_area,
-                                    color_buff,
-                                    depth,
-                                    &Vec3::new(255.0, 0.0, 255.0), //error color
-                                    idx,
-                                );
-                            }
-                        }
-                        RenderMode::TextureColor => {
-                            if let Some(texture) = &texture {
-                                tri.render_pixel_tex_col(
-                                    p,
-                                    [rec0, rec1, rec2],
-                                    [sc0, sc1, sc2],
-                                    total_area,
-                                    color_buff,
-                                    depth,
-                                    texture,
-                                    idx,
-                                );
-                            } else {
-                                tri.render_pixel_vertex_col(
-                                    p,
-                                    [rec0, rec1, rec2],
-                                    [sc0, sc1, sc2],
-                                    total_area,
-                                    color_buff,
-                                    depth,
-                                    idx,
-                                );
-                            }
-                        }
-                        RenderMode::Uv => {
-                            tri.render_pixel_uv(
-                                p,
-                                [rec0, rec1, rec2],
-                                [sc0, sc1, sc2],
-                                total_area,
-                                color_buff,
-                                depth,
-                                idx,
-                            );
-                        }
-                        RenderMode::Bary => {
-                            tri.render_pixel_bary(
-                                p,
-                                [rec0, rec1, rec2],
-                                [sc0, sc1, sc2],
-                                total_area,
-                                color_buff,
-                                depth,
-                                idx,
-                            );
-                        }
-                        RenderMode::Depth => {
-                            tri.render_pixel_depth(
-                                p,
-                                [rec0, rec1, rec2],
-                                [sc0, sc1, sc2],
-                                total_area,
-                                color_buff,
-                                depth,
-                                idx,
-                            );
-                        }
-                        RenderMode::Aabb => {
-                            tri.render_aabb(color_buff, idx);
-                        }
-                        RenderMode::Normal => {
-                            tri.render_pixel_normal(
-                                p,
-                                [rec0, rec1, rec2],
-                                [sc0, sc1, sc2],
-                                total_area,
-                                color_buff,
-                                depth,
-                                idx,
-                            );
-                        }
+                    }
+                    RenderMode::Uv => {
+                        self.render_pixel_uv(
+                            p,
+                            self.rec,
+                            self.scc,
+                            self.total_area,
+                            color_buff,
+                            depth_buff,
+                            idx,
+                        );
+                    }
+                    RenderMode::Bary => {
+                        self.render_pixel_bary(
+                            p,
+                            self.rec,
+                            self.scc,
+                            self.total_area,
+                            color_buff,
+                            depth_buff,
+                            idx,
+                        );
+                    }
+                    RenderMode::Depth => {
+                        self.render_pixel_depth(
+                            p,
+                            self.rec,
+                            self.scc,
+                            self.total_area,
+                            color_buff,
+                            depth_buff,
+                            idx,
+                        );
+                    }
+                    RenderMode::Aabb => {
+                        self.render_aabb(color_buff, idx);
+                    }
+                    RenderMode::Normal => {
+                        self.render_pixel_normal(
+                            p,
+                            self.rec,
+                            self.scc,
+                            self.total_area,
+                            color_buff,
+                            depth_buff,
+                            idx,
+                        );
                     }
                 }
             }
@@ -260,45 +429,20 @@ impl Triangle {
 
     pub fn render_triangle(
         &self,
-        buffer: &mut [u32],
-        depth: &mut [f32],
+        slice_buff: &mut SlicedBuffers,
         camera: &Camera,
-        texture: Option<&Rc<Texture>>,
+        texture: Option<&Arc<Texture>>,
         color: &Vec3,
         render_type: &RenderMode,
     ) {
         match Self::clip_cull_triangle(self) {
             ClipResult::Clipped => {}
             ClipResult::One(tri) => {
-                Self::render_clipped_triangle(
-                    &tri,
-                    buffer,
-                    depth,
-                    camera,
-                    texture,
-                    color,
-                    render_type,
-                );
+                Self::render_clipped_triangle(&tri, slice_buff, texture, color, render_type);
             }
             ClipResult::Two(tri) => {
-                Self::render_clipped_triangle(
-                    &tri.0,
-                    buffer,
-                    depth,
-                    camera,
-                    texture,
-                    color,
-                    render_type,
-                );
-                Self::render_clipped_triangle(
-                    &tri.1,
-                    buffer,
-                    depth,
-                    camera,
-                    texture,
-                    color,
-                    render_type,
-                );
+                Self::render_clipped_triangle(&tri.0, slice_buff, texture, color, render_type);
+                Self::render_clipped_triangle(&tri.1, slice_buff, texture, color, render_type);
             }
         }
     }
@@ -752,8 +896,6 @@ impl Triangle {
         copy.v[1] = v1;
         copy.v[2] = v2;
 
-        //println!("out tri: {:?}, {:?}, {:?},", v0, v1, v2);
-        // draw triangles
         copy
     }
 
@@ -766,7 +908,6 @@ impl Triangle {
         let v0_a = render_utils::lerp(self.v[0], self.v[1], alpha_a);
         let v0_b = render_utils::lerp(self.v[0], self.v[2], alpha_b);
 
-        // draw triangles
         let mut result_a = *self;
         let mut result_b = *self;
 

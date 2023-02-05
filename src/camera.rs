@@ -81,8 +81,10 @@ impl Camera {
         self.yaw += yaw;
         self.pitch += pitch;
 
-        self.yaw %= 360.0;
-        self.pitch = self.pitch.clamp(-90.0, 90.0);
+        self.yaw %= f32::to_radians(360.0);
+        self.pitch = self
+            .pitch
+            .clamp(f32::to_radians(-90.0), f32::to_radians(90.0));
 
         let pitch = Quat::from_axis_angle(Vec3::X, self.pitch);
         let yaw = Quat::from_axis_angle(Vec3::Y, self.yaw);

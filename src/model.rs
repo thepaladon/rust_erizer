@@ -1,13 +1,14 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::{
-    camera::Camera, mesh::Mesh, render_utils::rgba8_to_u32, texture::Texture, transform::Transform,
+    camera::Camera, mesh::Mesh, render_utils::rgba8_to_u32, sliced_buffer::SlicedBuffers,
+    texture::Texture, transform::Transform,
 };
 use gltf::{self, Gltf};
 
 pub struct Model {
     pub meshes: Vec<Mesh>,
-    pub textures: Vec<Rc<Texture>>,
+    pub textures: Vec<Arc<Texture>>,
 
     transform: Transform,
 }
@@ -56,7 +57,7 @@ impl Model {
                 gltf::image::Format::R32G32B32A32FLOAT => todo!(),
             }
 
-            model.textures.push(Rc::new(Texture {
+            model.textures.push(Arc::new(Texture {
                 width: image.width,
                 height: image.height,
                 data,
@@ -69,6 +70,7 @@ impl Model {
                 if let Some(mesh) = node.mesh() {
                     for primitive in mesh.primitives() {
                         let mut my_mesh = Mesh::gltf_load_mesh(&primitive, &buffers);
+
                         if my_mesh.material.base_tex_idx != -1 {
                             my_mesh.texture = Some(
                                 model.textures[my_mesh.material.base_tex_idx as usize].clone(),
@@ -84,9 +86,9 @@ impl Model {
         model
     }
 
-    pub fn render(&self, buffer: &mut [u32], depth: &mut [f32], camera: &Camera) {
+    pub fn render(&self, slice_buff: &mut SlicedBuffers, camera: &Camera) {
         for mesh in &self.meshes {
-            mesh.render(buffer, depth, camera, &self.transform)
+            mesh.render(slice_buff, camera, &self.transform)
         }
     }
 
