@@ -17,8 +17,6 @@ mod texture;
 mod transform;
 mod triangle;
 
-use jobsys::JobScope;
-use jobsys::JobSystem;
 use mesh::Mesh;
 use minifb::MouseButton;
 use minifb::MouseMode;
@@ -29,7 +27,6 @@ use transform::Transform;
 
 use camera::Camera;
 
-use core::slice;
 use glam::Vec3;
 use minifb::{Key, Window, WindowOptions};
 use std::sync::Arc;
@@ -50,7 +47,7 @@ const HEIGHT: usize = 800;
 
 fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
-    let mut depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
+    let depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
 
     let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, 4);
 
@@ -93,15 +90,15 @@ fn main() {
     camera.set_position(Vec3::new(0.0, 0.0, 8.0));
 
     //Sponza
-    //let mut gltf_obj = Model::from_filepath("resources/sponza/Sponza.gltf");
-    //let sponza_trans = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
-    //gltf_obj.replace_transform(sponza_trans);
+    let mut gltf_obj = Model::from_filepath("resources/sponza/Sponza.gltf");
+    let sponza_trans = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
+    gltf_obj.replace_transform(sponza_trans);
 
     //Cube
     // let mut gltf_obj = Model::from_filepath("resources/cube/Cube.gltf");
 
     // Helmet
-    let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
+    // let mut gltf_obj = Model::from_filepath("resources/helmet/Helmet.gltf");
 
     let mut rotation: f32 = 0.0;
     let mut dmouse = window.get_mouse_pos(MouseMode::Pass).unwrap();
@@ -115,11 +112,6 @@ fn main() {
 
     let mut prev_dt = Instant::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        let thread_count = 4_usize;
-        let job_capacity = 512_usize;
-        let job_sys = JobSystem::new(thread_count, job_capacity).unwrap();
-        let job_scope = JobScope::new_from_system(&job_sys);
-
         //Delta Time
         let now = Instant::now();
         let dt = now.duration_since(prev_dt).as_secs_f32();
@@ -162,7 +154,8 @@ fn main() {
             set_mouse_pos(
                 window.get_position().0 as i32 + 5,
                 window.get_position().1 as i32 + 5,
-            );
+            )
+            .unwrap();
         }
 
         if window.get_mouse_down(MouseButton::Left) {
@@ -175,7 +168,7 @@ fn main() {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
 
-        gltf_obj.replace_transform(cube_trans);
+        // gltf_obj.replace_transform(cube_trans);
 
         // JobInstance::create(&job_scope, || {
         gltf_obj.render(&mut sliced_buffers, &camera);
@@ -191,10 +184,10 @@ fn main() {
         //All triangles should have their vertices in screen space here
         sliced_buffers.aa_bb_comparison();
 
-        sliced_buffers.render(&camera, &cube.render_mode, &job_scope);
-        
+        sliced_buffers.render(&camera, &cube.render_mode);
+
         buffer = sliced_buffers.transfer_buffer();
-        
+
         //Input
         input::move_camera(&window, &mut camera, dt);
         mouse_diff::change_fov(&window, &mut camera, dt);

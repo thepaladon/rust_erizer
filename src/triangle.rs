@@ -1,5 +1,4 @@
-use core::slice;
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     camera::Camera,
@@ -31,7 +30,7 @@ pub enum VerticesOrder {
     CAB,
     CBA,
 }
-
+#[allow(clippy::large_enum_variant)]
 pub enum ClipResult {
     Clipped,
     One(Triangle),
@@ -125,15 +124,15 @@ impl Triangle {
         tri.v[0].position = ndc0;
         tri.v[1].position = ndc1;
         tri.v[2].position = ndc2;
-        
+
         tri.rec[0] = rec0;
         tri.rec[1] = rec1;
         tri.rec[2] = rec2;
-        
+
         tri.scc[0] = sc0;
         tri.scc[1] = sc1;
         tri.scc[2] = sc2;
-        
+
         tri.total_area = total_area;
 
         //I need to add the triangles here to some sort of VECTOR
@@ -278,6 +277,7 @@ impl Triangle {
         // }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render_fragments(
         &self,
         pos: IVec2,
@@ -290,7 +290,6 @@ impl Triangle {
     ) {
         for idx_x in 0..size.x {
             for idx_y in 0..size.y {
-
                 let x = pos.x + idx_x;
                 let y = pos.y + idx_y;
                 //Fragment Shader
@@ -335,7 +334,7 @@ impl Triangle {
                                 self.total_area,
                                 color_buff,
                                 depth_buff,
-                                &texture,
+                                texture,
                                 idx,
                             );
                         } else {
