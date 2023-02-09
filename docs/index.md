@@ -1,11 +1,6 @@
----
-layout: default
-title: Rusterizer Masterclass submission
-description: A short desctiption of your submission
----
-
 # Title
 Name: Angel Donchev Angelov
+
 BUas email: 211195@buas.nl
 
 ## Features
