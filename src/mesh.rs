@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use glam::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
+use rand::Rng;
 
 use crate::{
     camera::Camera, data::Vertex, material::Material, render_utils, sliced_buffer::SlicedBuffers,
@@ -58,7 +59,7 @@ impl Mesh {
             material,
             texture: None,
             transform: Transform::IDENTITY,
-            render_mode: RenderMode::Texture,
+            render_mode: RenderMode::VertexColor,
             aa_bb: None,
         }
     }
@@ -145,7 +146,7 @@ impl Mesh {
             material,
             texture: Some(texture.clone()),
             transform: Transform::IDENTITY,
-            render_mode: RenderMode::Texture,
+            render_mode: RenderMode::VertexColor,
             aa_bb: Some(aa_bb),
         }
     }
@@ -237,7 +238,11 @@ impl Mesh {
                 .for_each(|tc| tex_coords.push(Vec2::new(tc[0], tc[1])));
         }
 
-        let colors: Vec<Vec3> = positions.iter().map(|_| Vec3::ONE).collect();
+        let mut rng = rand::thread_rng();
+        let colors: Vec<Vec3> = positions
+            .iter()
+            .map(|_| Vec3::new(rng.gen(), rng.gen(), rng.gen()))
+            .collect();
         println!("Num indices: {:?}", indices.len());
         println!("Tex_coords: {:?}", tex_coords.len());
         println!("Positions: {:?}", positions.len());
