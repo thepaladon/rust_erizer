@@ -42,17 +42,17 @@ const _WHITE: Vec3 = Vec3::new(255.0, 255.0, 255.0);
 const _GRAY: Vec3 = Vec3::new(128.0, 128.0, 128.0);
 const _BLACK: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
-const WIDTH: usize = 1024;
-const HEIGHT: usize = 800;
+const WIDTH: usize = 1920 / 2;
+const HEIGHT: usize = 1080 / 2;
 
 fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
 
-    let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, 4);
+    let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, 8);
 
     let mut window = Window::new(
-        "Angle's Rust_erizar",
+        "Angle's Rust_erizer",
         WIDTH,
         HEIGHT,
         WindowOptions::default(),

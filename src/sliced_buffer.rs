@@ -14,6 +14,16 @@ pub struct Tile {
 
 impl Tile {
     fn new(pos: IVec2, size: IVec2, idx: IVec2) -> Self {
+        let mut size = size;
+
+        if pos.x + size.x >= crate::WIDTH as i32 {
+            size.x = crate::WIDTH as i32 - pos.x;
+        }
+
+        if pos.y + size.y >= crate::HEIGHT as i32 {
+            size.y = crate::HEIGHT as i32 - pos.y;
+        }
+
         Self {
             pos,
             size,
@@ -60,7 +70,8 @@ impl Tile {
 pub struct SlicedBuffers {
     pub tiles: Vec<Tile>,
     pub triangles: Vec<Triangle>, //in screen space, to do AABB to check which tile should draw which triangle
-    pub size: IVec2,
+    pub amount_of_tiles: IVec2,
+    pub size_of_tiles: i32,
 }
 
 impl SlicedBuffers {
@@ -68,11 +79,13 @@ impl SlicedBuffers {
         Self {
             tiles: Vec::new(),
             triangles: Vec::new(),
-            size: IVec2::splat(0),
+            amount_of_tiles: IVec2::splat(0),
+            size_of_tiles: 0,
         }
     }
 
     pub fn render(&mut self, camera: &Camera, render_type: &RenderMode) {
+        //Remove the "par_" from the line below to check performance single threaded
         self.tiles.par_iter_mut().enumerate().for_each(|tile| {
             tile.1.render(&self.triangles, camera, render_type);
         });
@@ -82,23 +95,28 @@ impl SlicedBuffers {
         let mut sliced_buff = Self {
             tiles: Vec::new(),
             triangles: Vec::new(),
-            size: IVec2::splat(0),
+            amount_of_tiles: IVec2::splat(0),
+            size_of_tiles: size_of_tile,
         };
 
-        assert!(
-            crate::WIDTH as i32 % size_of_tile == 0,
-            "Width Doesn't fit perfectly in size {size_of_tile}"
-        );
-        assert!(
-            crate::HEIGHT as i32 % size_of_tile == 0,
-            "Height Doesn't fit perfectly in size {size_of_tile}"
-        );
+        //assert!(
+        //    crate::WIDTH as i32 % size_of_tile == 0,
+        //    "Width Doesn't fit perfectly in size {size_of_tile}"
+        //);
+        //assert!(
+        //    crate::HEIGHT as i32 % size_of_tile == 0,
+        //    "Height Doesn't fit perfectly in size {size_of_tile}"
+        //);
 
         let amount_tiles: IVec2 = IVec2::new(
-            crate::WIDTH as i32 / size_of_tile,
-            crate::HEIGHT as i32 / size_of_tile,
+            f32::ceil(crate::WIDTH as f32 / size_of_tile as f32) as i32,
+            f32::ceil(crate::HEIGHT as f32 / size_of_tile as f32) as i32,
         );
-        sliced_buff.size = amount_tiles;
+        sliced_buff.amount_of_tiles = amount_tiles;
+
+        sliced_buff
+            .tiles
+            .reserve((amount_tiles.x * amount_tiles.y) as usize);
 
         for y in 0..amount_tiles.y {
             for x in 0..amount_tiles.x {
@@ -125,13 +143,13 @@ impl SlicedBuffers {
             let aabb = tri.aabb.unwrap();
 
             //Gives me the idx of the tile in which it is
-            let min = Vec2::floor(aabb[0]) / 4.0;
-            let max = Vec2::floor(aabb[1]) / 4.0;
+            let min = Vec2::floor(aabb[0]) / self.size_of_tiles as f32;
+            let max = Vec2::floor(aabb[1]) / self.size_of_tiles as f32;
 
             for x in min.x as i32..=max.x as i32 {
                 for y in min.y as i32..=max.y as i32 {
                     //let idx = (y + x * self.size.y) as usize;
-                    let idx = (x + y * self.size.x) as usize;
+                    let idx = (x + y * self.amount_of_tiles.x) as usize;
                     self.tiles[idx].tri_idx.push(i as u32);
                 }
             }
@@ -155,15 +173,16 @@ impl SlicedBuffers {
     pub fn transfer_buffer(&self) -> Vec<u32> {
         let mut output = vec![0; crate::WIDTH * crate::HEIGHT];
 
-        for x in 0..self.size.x {
-            for y in 0..self.size.y {
-                let tile = &self.tiles[(x + y * self.size.x) as usize];
+        for x in 0..self.amount_of_tiles.x {
+            for y in 0..self.amount_of_tiles.y {
+                let tile = &self.tiles[(x + y * self.amount_of_tiles.x) as usize];
                 for t_x in 0..tile.size.x {
                     for t_y in 0..tile.size.y {
                         let src = (t_x + t_y * tile.size.x) as usize;
-                        let dst =
-                            (x * tile.size.x + t_x + (y * tile.size.y + t_y) * crate::WIDTH as i32)
-                                as usize;
+                        let dst = (x * self.size_of_tiles
+                            + t_x
+                            + (y * self.size_of_tiles + t_y) * crate::WIDTH as i32)
+                            as usize;
 
                         output[dst] = tile.color_data[src];
                     }
