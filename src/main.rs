@@ -13,27 +13,27 @@ mod mouse_diff;
 mod render_utils;
 mod sampler;
 mod sliced_buffer;
+mod tex_manager;
 mod texture;
 mod transform;
 mod triangle;
 
-use mesh::Mesh;
+use mesh::VertexMesh;
 use minifb::MouseButton;
 use minifb::MouseMode;
 use model::Model;
 use sliced_buffer::SlicedBuffers;
-use texture::Texture;
 use transform::Transform;
 
 use camera::Camera;
 
 use glam::Vec3;
 use minifb::{Key, Window, WindowOptions};
-use std::sync::Arc;
 use std::time::Instant;
 
 use crate::input::enable_mouse;
 use crate::mouse_diff::set_mouse_pos;
+use crate::tex_manager::*;
 
 const _RED: Vec3 = Vec3::new(255.0, 0.0, 0.0);
 const _GREEN: Vec3 = Vec3::new(0.0, 255.0, 0.0);
@@ -61,26 +61,34 @@ fn main() {
         panic!("{}", e);
     });
 
-    let texture = Arc::new(Texture::from_filepath("resources/textures/bojan.jpg"));
-    let mut cube = Mesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, &texture);
+    let bojan_tex = {
+        let mut manager = TEXTURE_MANAGER.write().unwrap();
+        manager
+            .load_from_filepath("resources/textures/bojan.jpg")
+            .expect("Not found")
+    };
+
+    let mut cube = VertexMesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, bojan_tex);
 
     //Triangle
-    let mut triangle = Mesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], &texture);
+    let mut triangle = VertexMesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], bojan_tex);
     let tri_trans = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
     triangle.replace_transform(tri_trans);
 
     //Plane
-    let mut plane = Mesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], &texture);
+    let mut plane = VertexMesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], bojan_tex);
     let plane_trans = Transform::from_translation(Vec3::new(4.0, 0.0, 0.0));
     plane.replace_transform(plane_trans);
 
     //Rhombus
-    let mut rhombus = Mesh::from_texture(&data::RHOMBUS_VERTICES, &data::RHOMBUS_INDEX, &texture);
+    let mut rhombus =
+        VertexMesh::from_texture(&data::RHOMBUS_VERTICES, &data::RHOMBUS_INDEX, bojan_tex);
     let rhomb_trans = Transform::from_translation(Vec3::new(0.0, 3.0, 0.0));
     rhombus.replace_transform(rhomb_trans);
 
     //Pyramid
-    let mut pyramid = Mesh::from_texture(&data::PYRAMID_VERTEX, &data::PYRAMID_INDEX, &texture);
+    let mut pyramid =
+        VertexMesh::from_texture(&data::PYRAMID_VERTEX, &data::PYRAMID_INDEX, bojan_tex);
     let pyramid_trans = Transform::from_translation(Vec3::new(2.0, 3.0, 2.0));
     pyramid.replace_transform(pyramid_trans);
 
@@ -168,6 +176,7 @@ fn main() {
         gltf_obj.render(&mut sliced_buffers, &camera);
 
         cube.render(&mut sliced_buffers, &camera, &Transform::default());
+        //cube.render(&mut sliced_buffers, &camera, &cube_trans);
         plane.render(&mut sliced_buffers, &camera, &Transform::default());
         triangle.render(&mut sliced_buffers, &camera, &Transform::default());
         rhombus.render(&mut sliced_buffers, &camera, &Transform::default());

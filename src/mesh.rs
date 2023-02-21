@@ -36,17 +36,23 @@ impl RenderMode {
     }
 }
 
-pub struct Mesh {
+pub struct VertexMesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
     pub material: Material,
-    pub texture: Option<Arc<Texture>>,
+    pub texture: Option<i32>,
     pub transform: Transform,
     pub render_mode: RenderMode,
-    pub aa_bb: Option<[Vec3; 2]>,
+    pub aa_bb: Option<[Vec3; 2]>, //For mesh frustum culling
 }
 
-impl Mesh {
+pub struct FragmentMesh {
+    pub triangles: Vec<Triangle>,
+    pub texture: Option<Arc<Texture>>,
+    pub material: Material,
+}
+
+impl VertexMesh {
     //Default Empty Constructor
     pub fn new() -> Self {
         let material = Material {
@@ -126,7 +132,7 @@ impl Mesh {
         true
     }
 
-    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: &Arc<Texture>) -> Self {
+    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: i32) -> Self {
         assert!(
             indices.len() % 3 == 0,
             "Indices size is wrong. {} % 3 == 0",
@@ -144,7 +150,7 @@ impl Mesh {
             vertices: vertices.to_vec(),
             indices: indices.to_vec(),
             material,
-            texture: Some(texture.clone()),
+            texture: Some(texture),
             transform: Transform::IDENTITY,
             render_mode: RenderMode::VertexColor,
             aa_bb: Some(aa_bb),
@@ -225,7 +231,7 @@ impl Mesh {
         let mut normals: Vec<Vec3> = Vec::new();
         let mut indices = vec![];
 
-        let mut mesh_result = Mesh::new();
+        let mut mesh_result = VertexMesh::new();
         let mut mat_result = Material::default();
 
         let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
@@ -279,8 +285,8 @@ impl Mesh {
         mesh_result
     }
 
-    pub fn add_ref_tex(&mut self, texture: &Arc<Texture>) {
-        self.texture = Some(texture.clone());
+    pub fn add_ref_tex(&mut self, texture: i32) {
+        self.texture = Some(texture);
     }
 
     pub fn add_section_from_buffers(
