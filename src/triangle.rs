@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    camera::Camera,
     mesh::RenderMode,
     render_utils::{self, edge_fun},
     sampler::*,
-    sliced_buffer::SlicedBuffers,
     texture::Texture,
 };
 
@@ -85,13 +83,7 @@ impl Triangle {
         }
     }
 
-    pub fn render_clipped_triangle(
-        triangle: &Triangle,
-        slice_buff: &mut SlicedBuffers,
-        texture: Option<&Arc<Texture>>,
-        color: &Vec3,
-        render_type: &RenderMode,
-    ) {
+    pub fn triangle_to_screen(triangle: &Triangle) -> Triangle {
         let mut tri = *triangle;
 
         // Used for Perspective Correct Mapping for vertices
@@ -136,145 +128,7 @@ impl Triangle {
         tri.total_area = total_area;
 
         //I need to add the triangles here to some sort of VECTOR
-        slice_buff.triangles.push(tri);
-
-        // //If an AABB exists, check only within that AABB
-        // if let Some(aabb) = tri.aabb {
-        //     for x in (aabb[0].x as i32)..=(aabb[1].x as i32) {
-        //         for y in (aabb[0].y as i32)..=(aabb[1].y as i32) {
-        //             //Fragment Shader
-        //             let p = Vec2::new(x as f32, y as f32) + 0.5;
-        //             let idx: usize = x as usize + y as usize * crate::WIDTH;
-
-        //             let src = color_buff[idx];
-        //             let src = render_utils::u32_to_argb8(src);
-
-        //             let fc = Vec3::new(src[1] as f32, src[2] as f32, src[3] as f32); //final color
-
-        //             match render_type {
-        //                 RenderMode::Color => {
-        //                     tri.render_pixel_color(
-        //                         p,
-        //                         [rec0, rec1, rec2],
-        //                         [sc0, sc1, sc2],
-        //                         total_area,
-        //                         color_buff,
-        //                         depth,
-        //                         color,
-        //                         idx,
-        //                     );
-        //                 }
-        //                 RenderMode::VertexColor => {
-        //                     tri.render_pixel_vertex_col(
-        //                         p,
-        //                         [rec0, rec1, rec2],
-        //                         [sc0, sc1, sc2],
-        //                         total_area,
-        //                         color_buff,
-        //                         depth,
-        //                         idx,
-        //                     );
-        //                 }
-        //                 RenderMode::Texture => {
-        //                     if let Some(texture) = &texture {
-        //                         tri.render_pixel_texture(
-        //                             p,
-        //                             [rec0, rec1, rec2],
-        //                             [sc0, sc1, sc2],
-        //                             total_area,
-        //                             color_buff,
-        //                             depth,
-        //                             texture,
-        //                             idx,
-        //                         );
-        //                     } else {
-        //                         tri.render_pixel_color(
-        //                             p,
-        //                             [rec0, rec1, rec2],
-        //                             [sc0, sc1, sc2],
-        //                             total_area,
-        //                             color_buff,
-        //                             depth,
-        //                             &Vec3::new(255.0, 0.0, 255.0), //error color
-        //                             idx,
-        //                         );
-        //                     }
-        //                 }
-        //                 RenderMode::TextureColor => {
-        //                     if let Some(texture) = &texture {
-        //                         tri.render_pixel_tex_col(
-        //                             p,
-        //                             [rec0, rec1, rec2],
-        //                             [sc0, sc1, sc2],
-        //                             total_area,
-        //                             color_buff,
-        //                             depth,
-        //                             texture,
-        //                             idx,
-        //                         );
-        //                     } else {
-        //                         tri.render_pixel_vertex_col(
-        //                             p,
-        //                             [rec0, rec1, rec2],
-        //                             [sc0, sc1, sc2],
-        //                             total_area,
-        //                             color_buff,
-        //                             depth,
-        //                             idx,
-        //                         );
-        //                     }
-        //                 }
-        //                 RenderMode::Uv => {
-        //                     tri.render_pixel_uv(
-        //                         p,
-        //                         [rec0, rec1, rec2],
-        //                         [sc0, sc1, sc2],
-        //                         total_area,
-        //                         color_buff,
-        //                         depth,
-        //                         idx,
-        //                     );
-        //                 }
-        //                 RenderMode::Bary => {
-        //                     tri.render_pixel_bary(
-        //                         p,
-        //                         [rec0, rec1, rec2],
-        //                         [sc0, sc1, sc2],
-        //                         total_area,
-        //                         color_buff,
-        //                         depth,
-        //                         idx,
-        //                     );
-        //                 }
-        //                 RenderMode::Depth => {
-        //                     tri.render_pixel_depth(
-        //                         p,
-        //                         [rec0, rec1, rec2],
-        //                         [sc0, sc1, sc2],
-        //                         total_area,
-        //                         color_buff,
-        //                         depth,
-        //                         idx,
-        //                     );
-        //                 }
-        //                 RenderMode::Aabb => {
-        //                     tri.render_aabb(color_buff, idx);
-        //                 }
-        //                 RenderMode::Normal => {
-        //                     tri.render_pixel_normal(
-        //                         p,
-        //                         [rec0, rec1, rec2],
-        //                         [sc0, sc1, sc2],
-        //                         total_area,
-        //                         color_buff,
-        //                         depth,
-        //                         idx,
-        //                     );
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        tri
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -426,23 +280,14 @@ impl Triangle {
         }
     }
 
-    pub fn render_triangle(
-        &self,
-        slice_buff: &mut SlicedBuffers,
-        camera: &Camera,
-        texture: Option<&Arc<Texture>>,
-        color: &Vec3,
-        render_type: &RenderMode,
-    ) {
+    pub fn render_triangle(&self) -> ClipResult {
         match Self::clip_cull_triangle(self) {
-            ClipResult::Clipped => {}
-            ClipResult::One(tri) => {
-                Self::render_clipped_triangle(&tri, slice_buff, texture, color, render_type);
-            }
-            ClipResult::Two(tri) => {
-                Self::render_clipped_triangle(&tri.0, slice_buff, texture, color, render_type);
-                Self::render_clipped_triangle(&tri.1, slice_buff, texture, color, render_type);
-            }
+            ClipResult::Clipped => ClipResult::Clipped,
+            ClipResult::One(tri) => ClipResult::One(Self::triangle_to_screen(&tri)),
+            ClipResult::Two(tri) => ClipResult::Two((
+                Self::triangle_to_screen(&tri.0),
+                Self::triangle_to_screen(&tri.1),
+            )),
         }
     }
 

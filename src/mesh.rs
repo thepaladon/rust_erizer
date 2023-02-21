@@ -168,6 +168,8 @@ impl Mesh {
         let model = self.transform.local() * parent_trans.local();
         let mvp = camera.perspective() * camera.view() * model;
 
+        let triangles_to_render: Vec<Triangle> = Vec::new();
+
         if self.cull_mesh_frustum(mvp) {
             for i in (0..self.indices.len()).step_by(3) {
                 let tri_idx: [usize; 3] = [
@@ -202,13 +204,17 @@ impl Mesh {
 
                 let triangle = Triangle::new([copy0, copy1, copy2]);
 
-                triangle.render_triangle(
-                    slice_buff,
-                    camera,
-                    self.texture.as_ref(),
-                    &self.material.base_color.xyz(),
-                    &self.render_mode,
-                );
+                //Collect all triangles here and pass them as a mesh to FS
+                match triangle.render_triangle() {
+                    crate::triangle::ClipResult::Clipped => { /* Fuck all */ }
+                    crate::triangle::ClipResult::One(tri) => {
+                        slice_buff.triangles.push(tri);
+                    }
+                    crate::triangle::ClipResult::Two(tri) => {
+                        slice_buff.triangles.push(tri.0);
+                        slice_buff.triangles.push(tri.1);
+                    }
+                }
             }
         }
     }
