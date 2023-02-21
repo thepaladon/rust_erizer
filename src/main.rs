@@ -118,14 +118,10 @@ fn main() {
         prev_dt = now;
 
         //Clear buffers
-        let clear_color =
-            render_utils::argb8_to_u32(255, _BLACK.x as u8, _BLACK.y as u8, _BLACK.z as u8);
+        let clear_color = render_utils::vec3_to_u32(_RED);
 
         sliced_buffers.clear_color(clear_color);
         sliced_buffers.clear_depth(f32::INFINITY);
-
-        //buffer.fill(clear_color);
-        //depth_buffer.fill(f32::INFINITY);
 
         //Rotate object on screen
         rotation += 0.01;
@@ -169,11 +165,7 @@ fn main() {
         }
 
         // gltf_obj.replace_transform(cube_trans);
-
-        // JobInstance::create(&job_scope, || {
         gltf_obj.render(&mut sliced_buffers, &camera);
-
-        // }).unwrap();
 
         cube.render(&mut sliced_buffers, &camera, &Transform::default());
         plane.render(&mut sliced_buffers, &camera, &Transform::default());

@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec2, Vec3, Vec3Swizzles};
+use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, Vec4};
 
 pub fn edge_fun(p: Vec2, v0: Vec2, v1: Vec2) -> f32 {
     let v0_p = p - v0;
@@ -80,6 +80,32 @@ pub fn cofactor(src: Mat4) -> Mat4 {
     dst[15] = minor(src, 0, 1, 2, 0, 1, 2);
 
     Mat4::from_cols_array(&dst)
+}
+
+pub fn vec3_to_u32(val: Vec3) -> u32 {
+    let a = 255_u8;
+    let r = val.x as u8;
+    let g = val.y as u8;
+    let b = val.z as u8;
+
+    let mut argb: u32 = a as u32;
+    argb = (argb << 8) + r as u32;
+    argb = (argb << 8) + g as u32;
+    argb = (argb << 8) + b as u32;
+    argb
+}
+
+pub fn vec4_to_u32(val: Vec4) -> u32 {
+    let a = val.x as u8;
+    let r = val.y as u8;
+    let g = val.z as u8;
+    let b = val.w as u8;
+
+    let mut argb: u32 = a as u32;
+    argb = (argb << 8) + r as u32;
+    argb = (argb << 8) + g as u32;
+    argb = (argb << 8) + b as u32;
+    argb
 }
 
 pub fn argb8_to_u32(a: u8, r: u8, g: u8, b: u8) -> u32 {
