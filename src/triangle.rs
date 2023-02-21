@@ -199,7 +199,7 @@ impl Triangle {
                                 self.total_area,
                                 color_buff,
                                 depth_buff,
-                                &Vec3::new(255.0, 0.0, 255.0), //error color
+                                &Vec3::new(128.0, 0.0, 255.0), //error color
                                 idx,
                             );
                         }

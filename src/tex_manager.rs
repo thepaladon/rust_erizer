@@ -39,7 +39,9 @@ impl TextureManager {
         for image in images {
             let mut data: Vec<u32> = Vec::new();
             match image.format {
-                gltf::image::Format::R8 => {}
+                gltf::image::Format::R8 => {
+                    dbg!("Todo, but removed cuz it crashed lol");
+                }
                 gltf::image::Format::R8G8 => todo!(),
                 gltf::image::Format::R8G8B8 => {
                     data = image

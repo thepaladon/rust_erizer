@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use glam::{IVec2, Vec2, Vec3};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
-use crate::{camera::Camera, mesh::RenderMode, triangle::Triangle};
+use crate::{camera::Camera, mesh::RenderMode, texture::Texture, triangle::Triangle};
 
 pub struct Tile {
     pub pos: IVec2,           //pos of top left pixel of the tile
@@ -51,14 +53,20 @@ impl Tile {
         self.depth_data.fill(val);
     }
 
-    fn render(&mut self, tri_buff: &[Triangle], camera: &Camera, render_type: &RenderMode) {
+    fn render(
+        &mut self,
+        tri_buff: &[Triangle],
+        camera: &Camera,
+        render_type: &RenderMode,
+        texture: Option<&Arc<Texture>>,
+    ) {
         for i in self.tri_idx.iter() {
             tri_buff[*i as usize].render_fragments(
                 self.pos,
                 self.size,
                 self.color_data.as_mut_slice(),
                 self.depth_data.as_mut_slice(),
-                None,
+                texture,
                 &Vec3::splat(255.0),
                 render_type,
             )
@@ -87,7 +95,20 @@ impl SlicedBuffers {
     pub fn render(&mut self, camera: &Camera, render_type: &RenderMode) {
         //Remove the "par_" from the line below to check performance single threaded
         self.tiles.par_iter_mut().enumerate().for_each(|tile| {
-            tile.1.render(&self.triangles, camera, render_type);
+            tile.1.render(&self.triangles, camera, render_type, None);
+        });
+    }
+
+    pub fn extern_render(
+        &mut self,
+        triangles: &[Triangle],
+        camera: &Camera,
+        render_type: &RenderMode,
+        texture: Option<&Arc<Texture>>,
+    ) {
+        //Remove the "par_" from the line below to check performance single threaded
+        self.tiles.par_iter_mut().enumerate().for_each(|tile| {
+            tile.1.render(triangles, camera, render_type, texture);
         });
     }
 
@@ -156,6 +177,41 @@ impl SlicedBuffers {
         }
     }
 
+    pub fn external_aa_bb_comparison(&mut self, triangles: &mut [Triangle]) {
+        //WIP
+        // triangles.par_iter_mut().enumerate().for_each(|(i , tri)|{
+        //     let aabb = tri.aabb.unwrap();
+
+        //     //Gives me the idx of the tile in which it is
+        //     let min = Vec2::floor(aabb[0]) / self.size_of_tiles as f32;
+        //     let max = Vec2::floor(aabb[1]) / self.size_of_tiles as f32;
+
+        //     for x in min.x as i32..=max.x as i32 {
+        //         for y in min.y as i32..=max.y as i32 {
+        //             //let idx = (y + x * self.size.y) as usize;
+        //             let idx = (x + y * self.amount_of_tiles.x) as usize;
+        //             self.tiles[idx].tri_idx.push(i as u32);
+        //         }
+        //     }
+        // })
+
+        for (i, tri) in triangles.iter().enumerate() {
+            let aabb = tri.aabb.unwrap();
+
+            //Gives me the idx of the tile in which it is
+            let min = Vec2::floor(aabb[0]) / self.size_of_tiles as f32;
+            let max = Vec2::floor(aabb[1]) / self.size_of_tiles as f32;
+
+            for x in min.x as i32..=max.x as i32 {
+                for y in min.y as i32..=max.y as i32 {
+                    //let idx = (y + x * self.size.y) as usize;
+                    let idx = (x + y * self.amount_of_tiles.x) as usize;
+                    self.tiles[idx].tri_idx.push(i as u32);
+                }
+            }
+        }
+    }
+
     pub fn clear_depth(&mut self, val: f32) {
         for tile in self.tiles.iter_mut() {
             tile.clear_buffers_depth(val);
@@ -163,9 +219,14 @@ impl SlicedBuffers {
     }
 
     pub fn clear_color(&mut self, val: u32) {
-        self.triangles.clear();
         for tile in self.tiles.iter_mut() {
             tile.clear_buffers_color(val);
+        }
+    }
+
+    pub fn clear_tiles(&mut self) {
+        self.triangles.clear();
+        for tile in self.tiles.iter_mut() {
             tile.tri_idx.clear();
         }
     }

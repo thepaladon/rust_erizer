@@ -5,7 +5,7 @@ use rand::Rng;
 
 use crate::{
     camera::Camera, data::Vertex, material::Material, render_utils, sliced_buffer::SlicedBuffers,
-    texture::Texture, transform::Transform, triangle::Triangle,
+    tex_manager::TEXTURE_MANAGER, texture::Texture, transform::Transform, triangle::Triangle,
 };
 pub enum RenderMode {
     Color,
@@ -174,7 +174,7 @@ impl VertexMesh {
         let model = self.transform.local() * parent_trans.local();
         let mvp = camera.perspective() * camera.view() * model;
 
-        let triangles_to_render: Vec<Triangle> = Vec::new();
+        let mut triangles_to_render: Vec<Triangle> = Vec::new();
 
         if self.cull_mesh_frustum(mvp) {
             for i in (0..self.indices.len()).step_by(3) {
@@ -214,14 +214,25 @@ impl VertexMesh {
                 match triangle.render_triangle() {
                     crate::triangle::ClipResult::Clipped => { /* Fuck all */ }
                     crate::triangle::ClipResult::One(tri) => {
-                        slice_buff.triangles.push(tri);
+                        triangles_to_render.push(tri);
                     }
                     crate::triangle::ClipResult::Two(tri) => {
-                        slice_buff.triangles.push(tri.0);
-                        slice_buff.triangles.push(tri.1);
+                        triangles_to_render.push(tri.0);
+                        triangles_to_render.push(tri.1);
                     }
                 }
             }
+
+            slice_buff.external_aa_bb_comparison(triangles_to_render.as_mut_slice());
+            if let Some(tex) = self.texture {
+                let manager = TEXTURE_MANAGER.read().unwrap();
+                let texture = manager.get_texture(&tex);
+                slice_buff.extern_render(&triangles_to_render, camera, &self.render_mode, texture);
+            } else {
+                slice_buff.extern_render(&triangles_to_render, camera, &self.render_mode, None);
+            }
+            slice_buff.clear_tiles();
+            //I can try rendering here. Do the AABB here?
         }
     }
 

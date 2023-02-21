@@ -95,7 +95,10 @@ fn main() {
     // Camera Init
     let mut mouse_camera_controls = true;
     let mut camera = Camera::default();
-    camera.set_position(Vec3::new(0.0, 0.0, 8.0));
+
+    //For Sponza
+    camera.set_position(Vec3::new(7.0, 2.5, -0.1));
+    camera.yaw = 1.6348684;
 
     //Sponza
     let mut gltf_obj = Model::from_filepath("resources/sponza/Sponza.gltf");
@@ -130,6 +133,7 @@ fn main() {
 
         sliced_buffers.clear_color(clear_color);
         sliced_buffers.clear_depth(f32::INFINITY);
+        sliced_buffers.clear_tiles();
 
         //Rotate object on screen
         rotation += 0.01;
@@ -183,9 +187,9 @@ fn main() {
         pyramid.render(&mut sliced_buffers, &camera, &Transform::default());
 
         //All triangles should have their vertices in screen space here
-        sliced_buffers.aa_bb_comparison();
-
-        sliced_buffers.render(&camera, &cube.render_mode);
+        //sliced_buffers.aa_bb_comparison();
+        //
+        //sliced_buffers.render(&camera, &cube.render_mode);
 
         buffer = sliced_buffers.transfer_buffer();
 
