@@ -18,12 +18,12 @@ impl Tile {
     fn new(pos: IVec2, size: IVec2, idx: IVec2) -> Self {
         let mut size = size;
 
-        if pos.x + size.x >= crate::WIDTH as i32 {
-            size.x = crate::WIDTH as i32 - pos.x;
+        if pos.x + size.x >= crate::BUFF_WIDTH as i32 {
+            size.x = crate::BUFF_WIDTH as i32 - pos.x;
         }
 
-        if pos.y + size.y >= crate::HEIGHT as i32 {
-            size.y = crate::HEIGHT as i32 - pos.y;
+        if pos.y + size.y >= crate::BUFF_HEIGHT as i32 {
+            size.y = crate::BUFF_HEIGHT as i32 - pos.y;
         }
 
         Self {
@@ -130,8 +130,8 @@ impl SlicedBuffers {
         //);
 
         let amount_tiles: IVec2 = IVec2::new(
-            f32::ceil(crate::WIDTH as f32 / size_of_tile as f32) as i32,
-            f32::ceil(crate::HEIGHT as f32 / size_of_tile as f32) as i32,
+            f32::ceil(crate::BUFF_WIDTH as f32 / size_of_tile as f32) as i32,
+            f32::ceil(crate::BUFF_HEIGHT as f32 / size_of_tile as f32) as i32,
         );
         sliced_buff.amount_of_tiles = amount_tiles;
 
@@ -232,7 +232,7 @@ impl SlicedBuffers {
     }
 
     pub fn transfer_buffer(&self) -> Vec<u32> {
-        let mut output = vec![0; crate::WIDTH * crate::HEIGHT];
+        let mut output = vec![0; crate::BUFF_WIDTH * crate::BUFF_HEIGHT];
 
         for x in 0..self.amount_of_tiles.x {
             for y in 0..self.amount_of_tiles.y {
@@ -242,7 +242,7 @@ impl SlicedBuffers {
                         let src = (t_x + t_y * tile.size.x) as usize;
                         let dst = (x * self.size_of_tiles
                             + t_x
-                            + (y * self.size_of_tiles + t_y) * crate::WIDTH as i32)
+                            + (y * self.size_of_tiles + t_y) * crate::BUFF_WIDTH as i32)
                             as usize;
 
                         output[dst] = tile.color_data[src];

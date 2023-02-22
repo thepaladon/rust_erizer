@@ -98,16 +98,16 @@ impl Triangle {
 
         // screeen coordinates remapped to window
         let sc0 = glam::vec2(
-            render_utils::map_to_range(ndc0.x, -1.0, 1.0, 0.0, crate::WIDTH as f32),
-            render_utils::map_to_range(-ndc0.y, -1.0, 1.0, 0.0, crate::HEIGHT as f32),
+            render_utils::map_to_range(ndc0.x, -1.0, 1.0, 0.0, crate::BUFF_WIDTH as f32),
+            render_utils::map_to_range(-ndc0.y, -1.0, 1.0, 0.0, crate::BUFF_HEIGHT as f32),
         );
         let sc1 = glam::vec2(
-            render_utils::map_to_range(ndc1.x, -1.0, 1.0, 0.0, crate::WIDTH as f32),
-            render_utils::map_to_range(-ndc1.y, -1.0, 1.0, 0.0, crate::HEIGHT as f32),
+            render_utils::map_to_range(ndc1.x, -1.0, 1.0, 0.0, crate::BUFF_WIDTH as f32),
+            render_utils::map_to_range(-ndc1.y, -1.0, 1.0, 0.0, crate::BUFF_HEIGHT as f32),
         );
         let sc2 = glam::vec2(
-            render_utils::map_to_range(ndc2.x, -1.0, 1.0, 0.0, crate::WIDTH as f32),
-            render_utils::map_to_range(-ndc2.y, -1.0, 1.0, 0.0, crate::HEIGHT as f32),
+            render_utils::map_to_range(ndc2.x, -1.0, 1.0, 0.0, crate::BUFF_WIDTH as f32),
+            render_utils::map_to_range(-ndc2.y, -1.0, 1.0, 0.0, crate::BUFF_HEIGHT as f32),
         );
 
         tri.calc_aabb([sc0, sc1, sc2]);
@@ -827,8 +827,8 @@ impl Triangle {
 
         taabb[0].x = taabb[0].x.max(0.0);
         taabb[0].y = taabb[0].y.max(0.0);
-        taabb[1].x = taabb[1].x.min(crate::WIDTH as f32 - 1.0);
-        taabb[1].y = taabb[1].y.min(crate::HEIGHT as f32 - 1.0);
+        taabb[1].x = taabb[1].x.min(crate::BUFF_WIDTH as f32 - 1.0);
+        taabb[1].y = taabb[1].y.min(crate::BUFF_HEIGHT as f32 - 1.0);
 
         self.aabb = Some(taabb);
     }

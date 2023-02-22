@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 winapi = "0.3.9"
-minifb = "0.23"
-glam = "0.22.0"
+minifb = "0.24.0"
+glam = "0.23.0"
 gltf = "1.1.0"
 image = "0.24.5"
 rayon = "1.6.1"

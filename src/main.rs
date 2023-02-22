@@ -42,19 +42,21 @@ const _WHITE: Vec3 = Vec3::new(255.0, 255.0, 255.0);
 const _GRAY: Vec3 = Vec3::new(128.0, 128.0, 128.0);
 const _BLACK: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
-const WIDTH: usize = 1920 / 2;
-const HEIGHT: usize = 1080 / 2;
+const WIN_WIDTH: usize = 1920;
+const WIN_HEIGHT: usize = 1080;
+const BUFF_WIDTH: usize = 1920 / 2;
+const BUFF_HEIGHT: usize = 1080 / 2;
 
 fn main() {
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
-    let depth_buffer: Vec<f32> = vec![f32::INFINITY; WIDTH * HEIGHT];
+    let mut buffer: Vec<u32> = vec![0; BUFF_WIDTH * BUFF_HEIGHT];
+    let depth_buffer: Vec<f32> = vec![f32::INFINITY; BUFF_WIDTH * BUFF_HEIGHT];
 
     let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, 8);
 
     let mut window = Window::new(
         "Angle's Rust_erizer",
-        WIDTH,
-        HEIGHT,
+        WIN_WIDTH,
+        WIN_HEIGHT,
         WindowOptions::default(),
     )
     .unwrap_or_else(|e| {
@@ -198,7 +200,9 @@ fn main() {
         mouse_diff::change_fov(&window, &mut camera, dt);
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+        window
+            .update_with_buffer(&buffer, BUFF_WIDTH, BUFF_HEIGHT)
+            .unwrap();
         first_frame = false;
         println!("Time elapsed: {:?}", now.elapsed());
     }
