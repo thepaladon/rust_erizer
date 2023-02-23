@@ -48,8 +48,8 @@ const WIN_WIDTH: usize = 1920;
 const WIN_HEIGHT: usize = 1080;
 const BUFF_WIDTH: usize = 1920 / BUFF_SCALE;
 const BUFF_HEIGHT: usize = 1080 / BUFF_SCALE;
-const BUFF_SCALE: usize = 4;
-const TILE_SIZE: i32 = 4;
+const BUFF_SCALE: usize = 2;
+const TILE_SIZE: i32 = 8;
 
 // BUFF_SCALE Down Testing
 // /1 - 1920 x 1080 - 8x8 tiles - ~300ms

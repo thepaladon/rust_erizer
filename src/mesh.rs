@@ -4,7 +4,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 use rand::Rng;
 
 use crate::{
-    camera::Camera, data::Vertex, material::Material, render_utils, sliced_buffer::SlicedBuffers,
+    camera::Camera, data::Vertex, material::Material, sliced_buffer::SlicedBuffers,
     tex_manager::TEXTURE_MANAGER, texture::Texture, transform::Transform, triangle::Triangle,
 };
 pub enum RenderMode {
@@ -226,9 +226,10 @@ impl VertexMesh {
         let model = self.transform.local() * parent_trans.local();
         let mvp = camera.perspective() * camera.view() * model;
 
-        let mut triangles_to_render: Vec<Triangle> = Vec::new();
-
         if self.cull_mesh_frustum(mvp) {
+            let inv_transpose = model.inverse().transpose();
+            let mut triangles_to_render: Vec<Triangle> = Vec::new();
+
             for i in (0..self.indices.len()).step_by(3) {
                 let tri_idx: [usize; 3] = [
                     self.indices[i] as usize,
@@ -241,12 +242,13 @@ impl VertexMesh {
                 let clip2 = mvp * self.vertices[tri_idx[2]].position;
 
                 //https://github.com/graphitemaster/normals_revisited
-                let norm0 = render_utils::cofactor(model)
-                    * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
-                let norm1 = render_utils::cofactor(model)
-                    * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
-                let norm2 = render_utils::cofactor(model)
-                    * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
+                //let norm0 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
+                //let norm1 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
+                //let norm2 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
+
+                let norm0 = inv_transpose * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
+                let norm1 = inv_transpose * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
+                let norm2 = inv_transpose * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
 
                 let mut copy0 = self.vertices[tri_idx[0]];
                 let mut copy1 = self.vertices[tri_idx[1]];
@@ -256,9 +258,9 @@ impl VertexMesh {
                 copy1.position = clip1;
                 copy2.position = clip2;
 
-                copy0.normal = norm0.xyz();
-                copy1.normal = norm1.xyz();
-                copy2.normal = norm2.xyz();
+                copy0.normal = norm0.xyz().normalize();
+                copy1.normal = norm1.xyz().normalize();
+                copy2.normal = norm2.xyz().normalize();
 
                 let triangle = Triangle::new([copy0, copy1, copy2]);
 
@@ -276,6 +278,8 @@ impl VertexMesh {
             }
 
             slice_buff.external_aa_bb_comparison(triangles_to_render.as_mut_slice());
+
+            //Get Texture and render
             if let Some(tex) = self.texture {
                 let manager = TEXTURE_MANAGER.read().unwrap();
                 let texture = manager.get_texture(&tex);
@@ -283,8 +287,8 @@ impl VertexMesh {
             } else {
                 slice_buff.extern_render(&triangles_to_render, camera, &self.render_mode, None);
             }
+
             slice_buff.clear_tiles();
-            //I can try rendering here. Do the AABB here?
         }
     }
 
@@ -332,7 +336,7 @@ impl VertexMesh {
 
         let mut base_col = -1;
         if let Some(mat) = base_col_option {
-            base_col = mat.texture().index() as i32;
+            base_col = mat.texture().source().index() as i32;
         }
 
         mat_result.base_color = Vec4::from(base_col_factor);

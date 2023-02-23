@@ -14,7 +14,7 @@ use glam::{IVec2, Vec2, Vec3, Vec4, Vec4Swizzles};
 pub struct Triangle {
     pub v: [Vertex; 3],
     pub rec: [f32; 3],  //Perspective Correction Coords
-    pub scc: [Vec2; 3], //screen coordinates
+    pub ssc: [Vec2; 3], //screen coordinates
     pub total_area: f32,
     pub aabb: Option<[Vec2; 2]>, // 0 -> min / 1 -> max
 }
@@ -41,7 +41,7 @@ impl Triangle {
             v: vertices,
             aabb: None,
             rec: [0.0, 0.0, 0.0],
-            scc: [Vec2::splat(0.0); 3],
+            ssc: [Vec2::splat(0.0); 3],
             total_area: 0.0,
         }
     }
@@ -121,9 +121,9 @@ impl Triangle {
         tri.rec[1] = rec1;
         tri.rec[2] = rec2;
 
-        tri.scc[0] = sc0;
-        tri.scc[1] = sc1;
-        tri.scc[2] = sc2;
+        tri.ssc[0] = sc0;
+        tri.ssc[1] = sc1;
+        tri.ssc[2] = sc2;
 
         tri.total_area = total_area;
 
@@ -146,6 +146,7 @@ impl Triangle {
             for idx_y in 0..size.y {
                 let x = pos.x + idx_x;
                 let y = pos.y + idx_y;
+
                 //Fragment Shader
                 let p = Vec2::new(x as f32, y as f32) + 0.5;
                 let idx: usize = (idx_x + idx_y * size.x) as usize;
@@ -155,125 +156,137 @@ impl Triangle {
 
                 let fc = Vec3::new(src[1] as f32, src[2] as f32, src[3] as f32); //final color
 
-                match render_type {
-                    RenderMode::Color => {
-                        self.render_pixel_color(
-                            p,
-                            self.rec,
-                            self.scc,
-                            self.total_area,
-                            color_buff,
-                            depth_buff,
-                            color,
-                            idx,
-                        );
-                    }
-                    RenderMode::VertexColor => {
-                        self.render_pixel_vertex_col(
-                            p,
-                            self.rec,
-                            self.scc,
-                            self.total_area,
-                            color_buff,
-                            depth_buff,
-                            idx,
-                        );
-                    }
-                    RenderMode::Texture => {
-                        if let Some(texture) = &texture {
-                            self.render_pixel_texture(
-                                p,
-                                self.rec,
-                                self.scc,
-                                self.total_area,
-                                color_buff,
-                                depth_buff,
-                                texture,
-                                idx,
-                            );
-                        } else {
+                if let RenderMode::Aabb = render_type {
+                    self.render_aabb(color_buff, idx);
+                }
+
+                // clock wise check
+                let area0 = render_utils::edge_fun(p, self.ssc[1], self.ssc[2]) / self.total_area;
+                let area1 = render_utils::edge_fun(p, self.ssc[2], self.ssc[0]) / self.total_area;
+                let area2 = render_utils::edge_fun(p, self.ssc[0], self.ssc[1]) / self.total_area;
+                let m_all_sign = ((area0.to_bits() | area1.to_bits() | area2.to_bits()) >> 31) == 0;
+
+                if m_all_sign {
+                    match render_type {
+                        RenderMode::Color => {
                             self.render_pixel_color(
                                 p,
                                 self.rec,
-                                self.scc,
+                                self.ssc,
                                 self.total_area,
                                 color_buff,
                                 depth_buff,
-                                &Vec3::new(128.0, 0.0, 255.0), //error color
+                                color,
                                 idx,
                             );
                         }
-                    }
-                    RenderMode::TextureColor => {
-                        if let Some(texture) = &texture {
-                            self.render_pixel_tex_col(
-                                p,
-                                self.rec,
-                                self.scc,
-                                self.total_area,
-                                color_buff,
-                                depth_buff,
-                                texture,
-                                idx,
-                            );
-                        } else {
+                        RenderMode::VertexColor => {
                             self.render_pixel_vertex_col(
                                 p,
                                 self.rec,
-                                self.scc,
+                                self.ssc,
                                 self.total_area,
                                 color_buff,
                                 depth_buff,
                                 idx,
                             );
                         }
-                    }
-                    RenderMode::Uv => {
-                        self.render_pixel_uv(
-                            p,
-                            self.rec,
-                            self.scc,
-                            self.total_area,
-                            color_buff,
-                            depth_buff,
-                            idx,
-                        );
-                    }
-                    RenderMode::Bary => {
-                        self.render_pixel_bary(
-                            p,
-                            self.rec,
-                            self.scc,
-                            self.total_area,
-                            color_buff,
-                            depth_buff,
-                            idx,
-                        );
-                    }
-                    RenderMode::Depth => {
-                        self.render_pixel_depth(
-                            p,
-                            self.rec,
-                            self.scc,
-                            self.total_area,
-                            color_buff,
-                            depth_buff,
-                            idx,
-                        );
-                    }
-                    RenderMode::Aabb => {
-                        self.render_aabb(color_buff, idx);
-                    }
-                    RenderMode::Normal => {
-                        self.render_pixel_normal(
-                            p,
-                            self.rec,
-                            self.scc,
-                            self.total_area,
-                            color_buff,
-                            depth_buff,
-                            idx,
-                        );
+                        RenderMode::Texture => {
+                            if let Some(texture) = &texture {
+                                self.render_pixel_texture(
+                                    p,
+                                    self.rec,
+                                    self.ssc,
+                                    self.total_area,
+                                    color_buff,
+                                    depth_buff,
+                                    texture,
+                                    idx,
+                                );
+                            } else {
+                                self.render_pixel_color(
+                                    p,
+                                    self.rec,
+                                    self.ssc,
+                                    self.total_area,
+                                    color_buff,
+                                    depth_buff,
+                                    &Vec3::new(128.0, 0.0, 255.0), //error color
+                                    idx,
+                                );
+                            }
+                        }
+                        RenderMode::TextureColor => {
+                            if let Some(texture) = &texture {
+                                self.render_pixel_tex_col(
+                                    p,
+                                    self.rec,
+                                    self.ssc,
+                                    self.total_area,
+                                    color_buff,
+                                    depth_buff,
+                                    texture,
+                                    idx,
+                                );
+                            } else {
+                                self.render_pixel_vertex_col(
+                                    p,
+                                    self.rec,
+                                    self.ssc,
+                                    self.total_area,
+                                    color_buff,
+                                    depth_buff,
+                                    idx,
+                                );
+                            }
+                        }
+                        RenderMode::Uv => {
+                            self.render_pixel_uv(
+                                p,
+                                self.rec,
+                                self.ssc,
+                                self.total_area,
+                                color_buff,
+                                depth_buff,
+                                idx,
+                            );
+                        }
+                        RenderMode::Bary => {
+                            self.render_pixel_bary(
+                                p,
+                                self.rec,
+                                self.ssc,
+                                self.total_area,
+                                color_buff,
+                                depth_buff,
+                                idx,
+                            );
+                        }
+                        RenderMode::Depth => {
+                            self.render_pixel_depth(
+                                p,
+                                self.rec,
+                                self.ssc,
+                                self.total_area,
+                                color_buff,
+                                depth_buff,
+                                idx,
+                            );
+                        }
+                        RenderMode::Aabb => {
+                            //covered above.
+                        }
+                        RenderMode::Normal => {
+                            self.render_pixel_normal(
+                                p,
+                                self.rec,
+                                self.ssc,
+                                self.total_area,
+                                color_buff,
+                                depth_buff,
+                                idx,
+                            );
+                        }
                     }
                 }
             }
@@ -303,29 +316,21 @@ impl Triangle {
         color: &Vec3,
         idx: usize,
     ) {
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            //Color
+            let fc = color;
 
-                //Color
-                let fc = color;
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-            }
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
@@ -345,49 +350,40 @@ impl Triangle {
         let v1_uv = self.v[1].uv * rec[1];
         let v2_uv = self.v[2].uv * rec[2];
 
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
-        let m_all_sign = ((area0.to_bits() | area1.to_bits() | area2.to_bits()) >> 31) == 0;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if m_all_sign {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
+            let uv = uv * correction;
 
-                let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
-                let uv = uv * correction;
+            let uv = Triangle::calc_uv_sampler(uv, &texture.sampler);
 
-                let uv = Triangle::calc_uv_sampler(uv, &texture.sampler);
+            let img_width = (texture.width as f32 - 1.0) * uv.x;
+            let img_height = (texture.height as f32 - 1.0) * uv.y;
 
-                let img_width = (texture.width as f32 - 1.0) * uv.x;
-                let img_height = (texture.height as f32 - 1.0) * uv.y;
+            //let img_width = f32::clamp(img_width, 0, tex )
 
-                //let img_width = f32::clamp(img_width, 0, tex )
-
-                if img_width < 0.0 || img_width >= texture.width as f32 {
-                    let b = 1.0;
-                    panic!("Image WIDTH out of bounds. Value: {img_width}");
-                }
-                if img_height < 0.0 || img_height >= texture.height as f32 {
-                    panic!("Image HEIGHT out of bounds. Value: {img_height}")
-                }
-
-                let color = texture.get_pixel(img_width as u32, img_height as u32);
-
-                let fc = Vec3::new(color[0], color[1], color[2]);
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+            if img_width < 0.0 || img_width >= texture.width as f32 {
+                let b = 1.0;
+                panic!("Image WIDTH out of bounds. Value: {img_width}");
             }
+            if img_height < 0.0 || img_height >= texture.height as f32 {
+                panic!("Image HEIGHT out of bounds. Value: {img_height}")
+            }
+
+            let color = texture.get_pixel(img_width as u32, img_height as u32);
+
+            let fc = Vec3::new(color[0], color[1], color[2]);
+
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
@@ -410,48 +406,40 @@ impl Triangle {
         let v1_color = self.v[1].color * rec[1];
         let v2_color = self.v[2].color * rec[2];
 
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            let v_color = v0_color * bary.x + v1_color * bary.y + v2_color * bary.z;
+            let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
+            let v_color = v_color * correction;
+            let uv = uv * correction;
 
-                let v_color = v0_color * bary.x + v1_color * bary.y + v2_color * bary.z;
-                let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
-                let v_color = v_color * correction;
-                let uv = uv * correction;
+            let uv = Triangle::calc_uv_sampler(uv, &texture.sampler);
+            let v_color = v_color * Vec3::splat(255.0);
 
-                let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
-                let v_color = v_color * Vec3::splat(255.0);
+            let img_width = (texture.width as f32 - 1.0) * uv.x;
+            let img_height = (texture.height as f32 - 1.0) * uv.y;
 
-                let img_width = (texture.width as f32 - 1.0) * uv.x;
-                let img_height = (texture.height as f32 - 1.0) * uv.y;
-
-                if img_width < 0.0 || img_width >= texture.width as f32 {
-                    panic!("Image WIDTH out of bounds.")
-                }
-                if img_height < 0.0 || img_height >= texture.height as f32 {
-                    panic!("Image HEIGHT out of bounds.")
-                }
-
-                let color = texture.get_pixel(img_width as u32, img_height as u32);
-
-                let fc = (Vec3::new(color[0], color[1], color[2]) + v_color) / 2.0;
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
+            if img_width < 0.0 || img_width >= texture.width as f32 {
+                panic!("Image WIDTH out of bounds.")
             }
+            if img_height < 0.0 || img_height >= texture.height as f32 {
+                panic!("Image HEIGHT out of bounds.")
+            }
+
+            let color = texture.get_pixel(img_width as u32, img_height as u32);
+
+            let fc = (Vec3::new(color[0], color[1], color[2]) + v_color) / 2.0;
+
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
@@ -470,34 +458,26 @@ impl Triangle {
         let v1_normal = self.v[1].normal * rec[1];
         let v2_normal = self.v[2].normal * rec[2];
 
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            let normal = v0_normal * bary.x + v1_normal * bary.y + v2_normal * bary.z;
+            let normal = normal * correction;
 
-                let normal = v0_normal * bary.x + v1_normal * bary.y + v2_normal * bary.z;
-                let normal = normal * correction;
+            let normal = normal * 0.5 + 0.5; //correction for rendering normals ffddirectly
+            let color = normal * Vec3::splat(255.0);
 
-                let normal = normal + 0.5 * 0.5; //correction for rendering normals ffddirectly
-                let color = normal * Vec3::splat(255.0);
+            let fc = Vec3::new(color[0], color[1], color[2]);
 
-                let fc = Vec3::new(color[0], color[1], color[2]);
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-            }
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
@@ -512,29 +492,21 @@ impl Triangle {
         z_buffer: &mut [f32],
         idx: usize,
     ) {
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            //Bary
+            let fc = bary * Vec3::splat(255.0);
 
-                //Bary
-                let fc = bary * Vec3::splat(255.0);
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-            }
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
@@ -553,34 +525,26 @@ impl Triangle {
         let v1_uv = self.v[1].uv * rec[1];
         let v2_uv = self.v[2].uv * rec[2];
 
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
+            let uv = uv * correction;
 
-                let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
-                let uv = uv * correction;
+            let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
 
-                let uv = uv.clamp(Vec2::splat(0.0), Vec2::splat(1.0));
+            //UV
+            let fc = Vec3::new(uv.x, uv.y, 0.0) * Vec3::splat(255.0);
 
-                //UV
-                let fc = Vec3::new(uv.x, uv.y, 0.0) * Vec3::splat(255.0);
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-            }
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
@@ -599,32 +563,24 @@ impl Triangle {
         let v1_color = self.v[1].color * rec[1];
         let v2_color = self.v[2].color * rec[2];
 
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            let color = v0_color * bary.x + v1_color * bary.y + v2_color * bary.z;
+            let color = color * correction;
 
-                let color = v0_color * bary.x + v1_color * bary.y + v2_color * bary.z;
-                let color = color * correction;
+            //UV
+            let fc = Vec3::new(color.x, color.y, color.z) * Vec3::splat(255.0);
 
-                //UV
-                let fc = Vec3::new(color.x, color.y, color.z) * Vec3::splat(255.0);
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-            }
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
@@ -639,29 +595,21 @@ impl Triangle {
         z_buffer: &mut [f32],
         idx: usize,
     ) {
-        // clock wise check
-        let area0 = render_utils::edge_fun(p, ssc[1], ssc[2]) / total_area;
-        let area1 = render_utils::edge_fun(p, ssc[2], ssc[0]) / total_area;
-        let area2 = render_utils::edge_fun(p, ssc[0], ssc[1]) / total_area;
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
 
-        if area0 >= 0.0 && area1 >= 0.0 && area2 >= 0.0 {
-            let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
 
-            let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
-            let correction = 1.0 / correction;
-            let depth = bary.x * self.v[0].position.z
-                + bary.y * self.v[1].position.z
-                + bary.z * self.v[2].position.z;
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
 
-            if depth < z_buffer[idx] {
-                z_buffer[idx] = depth;
+            //Depth
+            let fc = depth * Vec3::splat(255.0);
 
-                //Depth
-                let fc = depth * Vec3::splat(255.0);
-
-                color_buff[idx] =
-                    render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
-            }
+            color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }
     }
 
