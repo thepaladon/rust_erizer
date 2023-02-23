@@ -12,6 +12,7 @@ mod model;
 mod mouse_diff;
 mod render_utils;
 mod sampler;
+mod scene;
 mod sliced_buffer;
 mod tex_manager;
 mod texture;
@@ -19,9 +20,10 @@ mod transform;
 mod triangle;
 
 use mesh::VertexMesh;
-use minifb::MouseButton;
 use minifb::MouseMode;
+use minifb::ScaleMode;
 use model::Model;
+use scene::Scene;
 use sliced_buffer::SlicedBuffers;
 use transform::Transform;
 
@@ -44,24 +46,31 @@ const _BLACK: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
 const WIN_WIDTH: usize = 1920;
 const WIN_HEIGHT: usize = 1080;
-const BUFF_WIDTH: usize = 1920 / 2;
-const BUFF_HEIGHT: usize = 1080 / 2;
+const BUFF_WIDTH: usize = 1920 / BUFF_SCALE;
+const BUFF_HEIGHT: usize = 1080 / BUFF_SCALE;
+const BUFF_SCALE: usize = 4;
+const TILE_SIZE: i32 = 4;
+
+// BUFF_SCALE Down Testing
+// /1 - 1920 x 1080 - 8x8 tiles - ~300ms
+// /2 - 960 x 540 - 8x8 tiles - ~150ms
+// /4 - 480 x 270
+// /8 - 240 x 135
 
 fn main() {
     let mut buffer: Vec<u32> = vec![0; BUFF_WIDTH * BUFF_HEIGHT];
     let depth_buffer: Vec<f32> = vec![f32::INFINITY; BUFF_WIDTH * BUFF_HEIGHT];
 
-    let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, 8);
-
-    let mut window = Window::new(
-        "Angle's Rust_erizer",
-        WIN_WIDTH,
-        WIN_HEIGHT,
-        WindowOptions::default(),
-    )
-    .unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
+    let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, TILE_SIZE);
+    let win_ops = WindowOptions {
+        resize: true,
+        scale_mode: ScaleMode::AspectRatioStretch,
+        ..Default::default()
+    };
+    let mut window = Window::new("Angle's Rust_erizer", WIN_WIDTH, WIN_HEIGHT, win_ops)
+        .unwrap_or_else(|e| {
+            panic!("{}", e);
+        });
 
     let bojan_tex = {
         let mut manager = TEXTURE_MANAGER.write().unwrap();
@@ -70,29 +79,27 @@ fn main() {
             .expect("Not found")
     };
 
-    let mut cube = VertexMesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, bojan_tex);
+    let mut scene1 = Scene::new("Hello Scene".to_string());
+
+    let cube = VertexMesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, bojan_tex);
 
     //Triangle
     let mut triangle = VertexMesh::from_texture(&data::PLANE_DATA, &[0, 3, 2], bojan_tex);
-    let tri_trans = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
-    triangle.replace_transform(tri_trans);
+    triangle.transform = Transform::from_translation(Vec3::new(0.0, 0.0, 2.0));
 
     //Plane
     let mut plane = VertexMesh::from_texture(&data::PLANE_DATA, &[0, 2, 1, 0, 3, 2], bojan_tex);
-    let plane_trans = Transform::from_translation(Vec3::new(4.0, 0.0, 0.0));
-    plane.replace_transform(plane_trans);
+    plane.transform = Transform::from_translation(Vec3::new(4.0, 0.0, 0.0));
 
     //Rhombus
     let mut rhombus =
         VertexMesh::from_texture(&data::RHOMBUS_VERTICES, &data::RHOMBUS_INDEX, bojan_tex);
-    let rhomb_trans = Transform::from_translation(Vec3::new(0.0, 3.0, 0.0));
-    rhombus.replace_transform(rhomb_trans);
+    rhombus.transform = Transform::from_translation(Vec3::new(0.0, 3.0, 0.0));
 
     //Pyramid
     let mut pyramid =
         VertexMesh::from_texture(&data::PYRAMID_VERTEX, &data::PYRAMID_INDEX, bojan_tex);
-    let pyramid_trans = Transform::from_translation(Vec3::new(2.0, 3.0, 2.0));
-    pyramid.replace_transform(pyramid_trans);
+    pyramid.transform = Transform::from_translation(Vec3::new(2.0, 3.0, 2.0));
 
     // Camera Init
     let mut mouse_camera_controls = true;
@@ -104,8 +111,7 @@ fn main() {
 
     //Sponza
     let mut gltf_obj = Model::from_filepath("resources/sponza/Sponza.gltf");
-    let sponza_trans = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
-    gltf_obj.replace_transform(sponza_trans);
+    gltf_obj.transform = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
 
     //Cube
     // let mut gltf_obj = Model::from_filepath("resources/cube/Cube.gltf");
@@ -124,6 +130,18 @@ fn main() {
     let mut first_frame = true;
 
     let mut prev_dt = Instant::now();
+
+    scene1.add_mesh("Cube", cube);
+    scene1.add_mesh("Triangle", triangle);
+    scene1.add_mesh("Plane", plane);
+    scene1.add_mesh("Rhombus", rhombus);
+    scene1.add_mesh("Pyramid", pyramid);
+    scene1.add_gltf("Sponza", "resources/sponza/Sponza.gltf");
+
+    if let Some(model) = scene1.get_model("Sponza") {
+        model.transform = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
+    }
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         //Delta Time
         let now = Instant::now();
@@ -168,25 +186,9 @@ fn main() {
             .unwrap();
         }
 
-        if window.get_mouse_down(MouseButton::Left) {
-            plane.next_render_mode();
-            cube.next_render_mode();
-            triangle.next_render_mode();
-            rhombus.next_render_mode();
-            pyramid.next_render_mode();
-            gltf_obj.next_render_mode();
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
+        scene1.change_render_mode(&window);
 
-        // gltf_obj.replace_transform(cube_trans);
-        gltf_obj.render(&mut sliced_buffers, &camera);
-
-        cube.render(&mut sliced_buffers, &camera, &Transform::default());
-        //cube.render(&mut sliced_buffers, &camera, &cube_trans);
-        plane.render(&mut sliced_buffers, &camera, &Transform::default());
-        triangle.render(&mut sliced_buffers, &camera, &Transform::default());
-        rhombus.render(&mut sliced_buffers, &camera, &Transform::default());
-        pyramid.render(&mut sliced_buffers, &camera, &Transform::default());
+        scene1.render(&mut sliced_buffers, &camera);
 
         //All triangles should have their vertices in screen space here
         //sliced_buffers.aa_bb_comparison();
@@ -203,6 +205,7 @@ fn main() {
         window
             .update_with_buffer(&buffer, BUFF_WIDTH, BUFF_HEIGHT)
             .unwrap();
+
         first_frame = false;
         println!("Time elapsed: {:?}", now.elapsed());
     }

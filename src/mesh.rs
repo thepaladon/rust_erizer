@@ -34,6 +34,27 @@ impl RenderMode {
             Aabb => Color,
         }
     }
+
+    fn previous_mode(&self) -> Self {
+        use RenderMode::*;
+        match *self {
+            VertexColor => Color,
+            Texture => VertexColor,
+            TextureColor => Texture,
+            Normal => TextureColor,
+            Uv => Normal,
+            Bary => Uv,
+            Depth => Bary,
+            Aabb => Depth,
+            Color => Aabb,
+        }
+    }
+}
+
+impl Default for RenderMode {
+    fn default() -> Self {
+        Self::Texture
+    }
 }
 
 pub struct VertexMesh {
@@ -46,6 +67,21 @@ pub struct VertexMesh {
     pub aa_bb: Option<[Vec3; 2]>, //For mesh frustum culling
 }
 
+#[allow(clippy::derivable_impls)]
+impl Default for VertexMesh {
+    fn default() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            material: Default::default(),
+            texture: None,
+            transform: Default::default(),
+            render_mode: Default::default(),
+            aa_bb: Default::default(),
+        }
+    }
+}
+
 pub struct FragmentMesh {
     pub triangles: Vec<Triangle>,
     pub texture: Option<Arc<Texture>>,
@@ -54,25 +90,37 @@ pub struct FragmentMesh {
 
 impl VertexMesh {
     //Default Empty Constructor
-    pub fn new() -> Self {
-        let material = Material {
-            base_color: Vec4::splat(255.0),
-            ..Default::default()
-        };
-        Self {
-            vertices: Vec::new(),
-            indices: Vec::new(),
-            material,
-            texture: None,
-            transform: Transform::IDENTITY,
-            render_mode: RenderMode::VertexColor,
-            aa_bb: None,
-        }
-    }
+    //pub fn new() -> Self {
+    //    let material = Material {
+    //        base_color: Vec4::splat(255.0),
+    //        ..Default::default()
+    //    };
+    //    Self {
+    //        vertices: Vec::new(),
+    //        indices: Vec::new(),
+    //        material,
+    //        texture: None,
+    //        transform: Transform::IDENTITY,
+    //        render_mode: RenderMode::default(),
+    //        aa_bb: None,
+    //    }
+    //}
 
-    pub fn from_color(vertices: &[Vertex], indices: &[u32], color: Vec4) -> Self {
+    pub fn new(
+        vertices: &[Vertex],
+        indices: &[u32],
+        color: Option<Vec4>,
+        texture: Option<i32>,
+    ) -> Self {
+        let base_color;
+        if let Some(color) = color {
+            base_color = color;
+        } else {
+            base_color = Vec4::splat(255.0);
+        }
+
         let material = Material {
-            base_color: color,
+            base_color,
             ..Default::default()
         };
 
@@ -82,9 +130,34 @@ impl VertexMesh {
             vertices: vertices.to_vec(),
             indices: indices.to_vec(),
             material,
-            texture: None,
+            texture,
             transform: Transform::IDENTITY,
-            render_mode: RenderMode::Color,
+            render_mode: RenderMode::default(),
+            aa_bb: Some(aa_bb),
+        }
+    }
+
+    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: i32) -> Self {
+        assert!(
+            indices.len() % 3 == 0,
+            "Indices size is wrong. {} % 3 == 0",
+            indices.len()
+        );
+
+        let material = Material {
+            base_tex_idx: -1,
+            base_color: Vec4::splat(255.0),
+        };
+
+        let aa_bb = Self::get_vertex_min_max(vertices);
+
+        Self {
+            vertices: vertices.to_vec(),
+            indices: indices.to_vec(),
+            material,
+            texture: Some(texture),
+            transform: Transform::IDENTITY,
+            render_mode: RenderMode::default(),
             aa_bb: Some(aa_bb),
         }
     }
@@ -132,37 +205,16 @@ impl VertexMesh {
         true
     }
 
-    pub fn from_texture(vertices: &[Vertex], indices: &[u32], texture: i32) -> Self {
-        assert!(
-            indices.len() % 3 == 0,
-            "Indices size is wrong. {} % 3 == 0",
-            indices.len()
-        );
-
-        let material = Material {
-            base_tex_idx: -1,
-            base_color: Vec4::splat(255.0),
-        };
-
-        let aa_bb = Self::get_vertex_min_max(vertices);
-
-        Self {
-            vertices: vertices.to_vec(),
-            indices: indices.to_vec(),
-            material,
-            texture: Some(texture),
-            transform: Transform::IDENTITY,
-            render_mode: RenderMode::VertexColor,
-            aa_bb: Some(aa_bb),
-        }
-    }
-
     pub fn replace_transform(&mut self, trans: Transform) {
         self.transform = trans;
     }
 
     pub fn next_render_mode(&mut self) {
         self.render_mode = self.render_mode.next_mode();
+    }
+
+    pub fn prev_render_mode(&mut self) {
+        self.render_mode = self.render_mode.previous_mode();
     }
 
     pub fn render(
@@ -242,7 +294,7 @@ impl VertexMesh {
         let mut normals: Vec<Vec3> = Vec::new();
         let mut indices = vec![];
 
-        let mut mesh_result = VertexMesh::new();
+        let mut mesh_result = VertexMesh::default();
         let mut mat_result = Material::default();
 
         let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));

@@ -6,21 +6,21 @@ use gltf::{self, Gltf};
 
 pub struct Model {
     pub meshes: Vec<VertexMesh>,
-    pub textures: Vec<i32>,
-    transform: Transform,
+    pub transform: Transform,
 }
 
 impl Model {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             meshes: Vec::new(),
-            textures: Vec::new(),
             transform: Transform::IDENTITY,
         }
     }
 
     pub fn from_filepath(filepath: &str) -> Self {
         let mut model = Self::new();
+        let textures: Vec<i32>;
+
         let gltf = Gltf::open(filepath);
 
         let (document, buffers, images) = gltf::import(filepath).unwrap();
@@ -29,10 +29,9 @@ impl Model {
 
         {
             let mut manager = TEXTURE_MANAGER.write().unwrap();
-            let textures = manager
+            textures = manager
                 .load_from_gltf_images(images)
                 .expect("Textures not found");
-            model.textures = textures; //Stores idx to textures as they are in the tex_manager
         }
 
         for scene in document.scenes() {
@@ -43,7 +42,7 @@ impl Model {
 
                         if my_mesh.material.base_tex_idx != -1 {
                             my_mesh.texture =
-                                Some(model.textures[my_mesh.material.base_tex_idx as usize]);
+                                Some(textures[my_mesh.material.base_tex_idx as usize]);
                         }
 
                         model.meshes.push(my_mesh);
@@ -52,6 +51,13 @@ impl Model {
             }
         }
 
+        model
+    }
+
+    pub fn from_mesh(mesh: VertexMesh, transform: Transform) -> Self {
+        let mut model = Self::new();
+        model.transform = transform;
+        model.meshes.push(mesh);
         model
     }
 
@@ -67,7 +73,9 @@ impl Model {
         }
     }
 
-    pub fn replace_transform(&mut self, trans: Transform) {
-        self.transform = trans;
+    pub fn prev_render_mode(&mut self) {
+        for mesh in &mut self.meshes {
+            mesh.prev_render_mode();
+        }
     }
 }
