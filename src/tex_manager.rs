@@ -76,7 +76,7 @@ impl TextureManager {
 
             let img_idx = self.textures.len() as i32;
             tex_indices.push(img_idx);
-            self.textures.insert(img_idx as i32, texture);
+            self.textures.insert(img_idx, texture);
         }
 
         Ok(tex_indices)
