@@ -7,6 +7,7 @@ use gltf::{self, Gltf};
 pub struct Model {
     pub meshes: Vec<VertexMesh>,
     pub transform: Transform,
+    textures: Vec<i32> //all texture indices of models
 }
 
 impl Model {
@@ -14,13 +15,13 @@ impl Model {
         Self {
             meshes: Vec::new(),
             transform: Transform::IDENTITY,
+            textures: Vec::new(),
         }
     }
 
     pub fn from_filepath(filepath: &str) -> Self {
         let mut model = Self::new();
-        let textures: Vec<i32>;
-
+        
         let gltf = Gltf::open(filepath);
 
         let (document, buffers, images) = gltf::import(filepath).unwrap();
@@ -29,7 +30,7 @@ impl Model {
 
         {
             let mut manager = TEXTURE_MANAGER.write().unwrap();
-            textures = manager
+            model.textures = manager
                 .load_from_gltf_images(images)
                 .expect("Textures not found");
         }
@@ -42,7 +43,7 @@ impl Model {
 
                         if my_mesh.material.base_tex_idx != -1 {
                             my_mesh.texture =
-                                Some(textures[my_mesh.material.base_tex_idx as usize]);
+                                Some(model.textures[my_mesh.material.base_tex_idx as usize]);
                         }
 
                         model.meshes.push(my_mesh);
@@ -77,5 +78,16 @@ impl Model {
         for mesh in &mut self.meshes {
             mesh.prev_render_mode();
         }
+    }
+}
+
+impl Drop for Model {
+    fn drop(&mut self) {
+        let mut manager = TEXTURE_MANAGER.write().unwrap();
+        
+        for tex in &self.textures {
+            manager.destroy_texture(tex);
+        }
+
     }
 }

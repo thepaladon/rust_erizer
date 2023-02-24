@@ -79,7 +79,10 @@ fn main() {
             .expect("Not found")
     };
 
-    let mut scene1 = Scene::new("Hello Scene".to_string());
+    let mut scenes: Vec<Scene> = Vec::new();
+    let mut scene_idx: usize = 0;
+    scenes.push(Scene::new("Hello Scene".to_string()));
+    scenes.push(Scene::new("Hello Scene 2".to_string()));
 
     let cube = VertexMesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, bojan_tex);
 
@@ -131,15 +134,24 @@ fn main() {
 
     let mut prev_dt = Instant::now();
 
-    scene1.add_mesh("Cube", cube);
-    scene1.add_mesh("Triangle", triangle);
-    scene1.add_mesh("Plane", plane);
-    scene1.add_mesh("Rhombus", rhombus);
-    scene1.add_mesh("Pyramid", pyramid);
-    scene1.add_gltf("Sponza", "resources/sponza/Sponza.gltf");
+    //SCENE 1
+    scenes[0].add_mesh("Cube", cube);
+    scenes[0].add_mesh("Triangle", triangle);
+    scenes[0].add_mesh("Plane", plane);
+    scenes[0].add_mesh("Rhombus", rhombus);
+    scenes[0].add_mesh("Pyramid", pyramid);
+    scenes[0].add_gltf("Sponza", "resources/sponza/Sponza.gltf");
 
-    if let Some(model) = scene1.get_model("Sponza") {
+    if let Some(model) = scenes[0].get_model("Sponza") {
         model.transform = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
+    }
+
+    // SCENE 2
+    scenes[1].add_gltf("Helmet", "resources/helmet/Helmet.gltf");
+    scenes[1].add_gltf("Cube", "resources/cube/Cube.gltf");
+
+    if let Some(model) = scenes[1].get_model("Cube") {
+        model.transform = Transform::from_translation(Vec3::new(2.0, 2.0, 0.0));
     }
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
@@ -186,14 +198,38 @@ fn main() {
             .unwrap();
         }
 
-        scene1.change_render_mode(&window);
-
-        scene1.render(&mut sliced_buffers, &camera);
+        scenes[scene_idx].change_render_mode(&window);
+        scenes[scene_idx].render(&mut sliced_buffers, &camera);
 
         //All triangles should have their vertices in screen space here
         //sliced_buffers.aa_bb_comparison();
         //
         //sliced_buffers.render(&camera, &cube.render_mode);
+
+        if window.is_key_down(Key::LeftBracket) {
+            scene_idx += 1;
+            scene_idx %= scenes.len();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        if window.is_key_down(Key::RightBracket) {
+            scene_idx -= 1;
+            scene_idx %= scenes.len();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
+        if window.is_key_down(Key::N) {
+            scenes[scene_idx].remove_model("Sponza");
+        }
+
+        if window.is_key_down(Key::B) {
+            scenes[scene_idx].add_gltf("Sponza", "resources/sponza/Sponza.gltf");
+
+            if let Some(model) = scenes[scene_idx].get_model("Sponza") {
+                model.transform = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
+            }
+
+        }
+
 
         buffer = sliced_buffers.transfer_buffer();
 

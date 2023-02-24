@@ -34,6 +34,10 @@ impl Scene {
             .insert(name.to_string(), Model::from_filepath(filepath));
     }
 
+    pub fn remove_model(&mut self, name: &str) {
+        self.render_models.remove_entry(name);
+    }
+
     pub fn get_model(&mut self, key: &str) -> Option<&mut Model> {
         self.render_models.get_mut(key)
     }

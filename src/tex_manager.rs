@@ -8,12 +8,15 @@ use gltf::image::Data;
 
 pub struct TextureManager {
     textures: HashMap<i32, Arc<Texture>>,
+    num_to_assign : i32 
+    //This always goes up, never down.
 }
 
 impl TextureManager {
-    fn new() -> TextureManager {
-        TextureManager {
+    fn new() -> Self {
+        Self {
             textures: HashMap::new(),
+            num_to_assign: 0,
         }
     }
 
@@ -22,13 +25,13 @@ impl TextureManager {
         //error "handling" is done in Texture here :p / dunno whether that's the best approach
         let texture = Arc::new(Texture::from_filepath(fp));
 
-        let idx = self.textures.len() as i32;
-        self.textures.insert(idx, texture);
-
-        Ok(idx)
+        self.num_to_assign += 1;
+        self.textures.insert(self.num_to_assign, texture);
+        Ok(self.num_to_assign)
     }
 
     pub fn load_from_gltf_images(&mut self, images: Vec<Data>) -> Result<Vec<i32>, String> {
+        
         if images.is_empty() {
             return Err("Images is empty".to_string());
         }
@@ -38,6 +41,7 @@ impl TextureManager {
 
         for image in images {
             let mut data: Vec<u32> = Vec::new();
+
             match image.format {
                 gltf::image::Format::R8 => {
                     dbg!("Todo, but removed cuz it crashed lol");
@@ -74,12 +78,16 @@ impl TextureManager {
                 ..Default::default()
             });
 
-            let img_idx = self.textures.len() as i32;
-            tex_indices.push(img_idx);
-            self.textures.insert(img_idx, texture);
+            self.num_to_assign += 1;
+            tex_indices.push(self.num_to_assign);
+            self.textures.insert(self.num_to_assign, texture);
         }
 
         Ok(tex_indices)
+    }
+
+    pub fn destroy_texture(&mut self, idx: &i32){
+        self.textures.remove(idx);
     }
 
     pub fn get_texture(&self, idx: &i32) -> Option<&Arc<Texture>> {
