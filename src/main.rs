@@ -227,9 +227,7 @@ fn main() {
             if let Some(model) = scenes[scene_idx].get_model("Sponza") {
                 model.transform = Transform::from_scale(Vec3::new(0.008, 0.008, 0.008));
             }
-
         }
-
 
         buffer = sliced_buffers.transfer_buffer();
 

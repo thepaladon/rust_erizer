@@ -7,7 +7,7 @@ use gltf::{self, Gltf};
 pub struct Model {
     pub meshes: Vec<VertexMesh>,
     pub transform: Transform,
-    textures: Vec<i32> //all texture indices of models
+    textures: Vec<i32>, //all texture indices of models
 }
 
 impl Model {
@@ -21,7 +21,7 @@ impl Model {
 
     pub fn from_filepath(filepath: &str) -> Self {
         let mut model = Self::new();
-        
+
         let gltf = Gltf::open(filepath);
 
         let (document, buffers, images) = gltf::import(filepath).unwrap();
@@ -84,10 +84,9 @@ impl Model {
 impl Drop for Model {
     fn drop(&mut self) {
         let mut manager = TEXTURE_MANAGER.write().unwrap();
-        
+
         for tex in &self.textures {
             manager.destroy_texture(tex);
         }
-
     }
 }

@@ -8,8 +8,7 @@ use gltf::image::Data;
 
 pub struct TextureManager {
     textures: HashMap<i32, Arc<Texture>>,
-    num_to_assign : i32 
-    //This always goes up, never down.
+    num_to_assign: i32, //This always goes up, never down.
 }
 
 impl TextureManager {
@@ -31,7 +30,6 @@ impl TextureManager {
     }
 
     pub fn load_from_gltf_images(&mut self, images: Vec<Data>) -> Result<Vec<i32>, String> {
-        
         if images.is_empty() {
             return Err("Images is empty".to_string());
         }
@@ -86,7 +84,7 @@ impl TextureManager {
         Ok(tex_indices)
     }
 
-    pub fn destroy_texture(&mut self, idx: &i32){
+    pub fn destroy_texture(&mut self, idx: &i32) {
         self.textures.remove(idx);
     }
 
