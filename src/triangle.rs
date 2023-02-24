@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    material::Material,
     mesh::RenderMode,
     render_utils::{self, edge_fun},
     sampler::*,
@@ -139,7 +140,7 @@ impl Triangle {
         color_buff: &mut [u32],
         depth_buff: &mut [f32],
         texture: Option<&Arc<Texture>>,
-        color: &Vec3,
+        material: &Material,
         render_type: &RenderMode,
     ) {
         for idx_x in 0..size.x {
@@ -168,15 +169,27 @@ impl Triangle {
 
                 if m_all_sign {
                     match render_type {
-                        RenderMode::Color => {
-                            self.render_pixel_color(
+                        RenderMode::Default => {
+                            self.render_default(
                                 p,
                                 self.rec,
                                 self.ssc,
                                 self.total_area,
                                 color_buff,
                                 depth_buff,
-                                color,
+                                texture,
+                                material,
+                                idx,
+                            );
+                        }
+                        RenderMode::Error => {
+                            self.render_error(
+                                p,
+                                self.rec,
+                                self.ssc,
+                                self.total_area,
+                                color_buff,
+                                depth_buff,
                                 idx,
                             );
                         }
@@ -204,14 +217,13 @@ impl Triangle {
                                     idx,
                                 );
                             } else {
-                                self.render_pixel_color(
+                                self.render_error(
                                     p,
                                     self.rec,
                                     self.ssc,
                                     self.total_area,
                                     color_buff,
                                     depth_buff,
-                                    &Vec3::new(128.0, 0.0, 255.0), //error color
                                     idx,
                                 );
                             }
@@ -305,7 +317,7 @@ impl Triangle {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn render_pixel_color(
+    fn render_default(
         &self,
         p: Vec2,
         rec: [f32; 3],
@@ -313,7 +325,81 @@ impl Triangle {
         total_area: f32,
         color_buff: &mut [u32],
         z_buffer: &mut [f32],
-        color: &Vec3,
+        texture: Option<&Arc<Texture>>,
+        material: &Material,
+        idx: usize,
+    ) {
+        //Bary -> Depth
+        let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
+        let correction = bary.x * rec[0] + bary.y * rec[1] + bary.z * rec[2];
+        let correction = 1.0 / correction;
+        let depth = bary.x * self.v[0].position.z
+            + bary.y * self.v[1].position.z
+            + bary.z * self.v[2].position.z;
+
+        if depth < z_buffer[idx] {
+            z_buffer[idx] = depth;
+
+            let v0_uv = self.v[0].uv * rec[0];
+            let v1_uv = self.v[1].uv * rec[1];
+            let v2_uv = self.v[2].uv * rec[2];
+
+            let v0_normal = self.v[0].normal * rec[0];
+            let v1_normal = self.v[1].normal * rec[1];
+            let v2_normal = self.v[2].normal * rec[2];
+
+            let uv = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
+            let uv = uv * correction;
+
+            let mut tex_color = Vec4::splat(1.0);
+            if let Some(texture) = texture {
+                let uv = Triangle::calc_uv_sampler(uv, &texture.sampler);
+
+                let img_width = (texture.width as f32 - 1.0) * uv.x;
+                let img_height = (texture.height as f32 - 1.0) * uv.y;
+
+                //let img_width = f32::clamp(img_width, 0, tex )
+
+                if img_width < 0.0 || img_width >= texture.width as f32 {
+                    let b = 1.0;
+                    panic!("Image WIDTH out of bounds. Value: {img_width}");
+                }
+                if img_height < 0.0 || img_height >= texture.height as f32 {
+                    panic!("Image HEIGHT out of bounds. Value: {img_height}")
+                }
+
+                tex_color = texture.get_pixel(img_width as u32, img_height as u32);
+                tex_color *= 0.003_921_569; //reciprocal of 255
+            }
+
+            let normals = v0_normal * bary.x + v1_normal * bary.y + v2_normal * bary.z;
+            let normals = normals * correction;
+
+            let light_dir = Vec3::new(-1.0, -1.0, -1.0).normalize();
+            let ambient_col = Vec4::new(0.2, 0.2, 0.2, 1.0);
+
+            let intensity = normals.dot(-light_dir);
+            let object_col = tex_color * material.base_color;
+
+            let diffuse = f32::max(intensity, 0.0) * object_col;
+            let ambient = ambient_col * object_col;
+
+            let mut fc = ambient + diffuse;
+            fc *= 255.0;
+
+            color_buff[idx] = render_utils::vec4_to_u32(fc);
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_error(
+        &self,
+        p: Vec2,
+        rec: [f32; 3],
+        ssc: [Vec2; 3],
+        total_area: f32,
+        color_buff: &mut [u32],
+        z_buffer: &mut [f32],
         idx: usize,
     ) {
         let bary = render_utils::barycentric_coordinates(p, ssc[0], ssc[1], ssc[2], total_area);
@@ -328,7 +414,15 @@ impl Triangle {
             z_buffer[idx] = depth;
 
             //Color
-            let fc = color;
+            let color = self.v[0].position * bary.x
+                + self.v[1].position * bary.y
+                + self.v[2].position * bary.z;
+
+            let fc = Vec3::new(
+                f32::abs(f32::sin(color.x * 209.0)),
+                0.0,
+                f32::abs(f32::sin(color.x * 209.0)),
+            ) * 255.0;
 
             color_buff[idx] = render_utils::argb8_to_u32(255, fc.x as u8, fc.y as u8, fc.z as u8);
         }

@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
-use glam::{IVec2, Vec2, Vec3};
+use glam::{IVec2, Vec2};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
-use crate::{camera::Camera, mesh::RenderMode, texture::Texture, triangle::Triangle};
+use crate::{
+    camera::Camera, material::Material, mesh::RenderMode, texture::Texture, triangle::Triangle,
+};
 
 pub struct Tile {
     pub pos: IVec2,           //pos of top left pixel of the tile
@@ -59,6 +61,7 @@ impl Tile {
         camera: &Camera,
         render_type: &RenderMode,
         texture: Option<&Arc<Texture>>,
+        material: &Material,
     ) {
         for i in self.tri_idx.iter() {
             tri_buff[*i as usize].render_fragments(
@@ -67,7 +70,7 @@ impl Tile {
                 self.color_data.as_mut_slice(),
                 self.depth_data.as_mut_slice(),
                 texture,
-                &Vec3::splat(255.0),
+                material,
                 render_type,
             )
             //This is most of the data, now we just draw.
@@ -92,12 +95,12 @@ impl SlicedBuffers {
         }
     }
 
-    pub fn render(&mut self, camera: &Camera, render_type: &RenderMode) {
-        //Remove the "par_" from the line below to check performance single threaded
-        self.tiles.par_iter_mut().enumerate().for_each(|tile| {
-            tile.1.render(&self.triangles, camera, render_type, None);
-        });
-    }
+    //pub fn render(&mut self, camera: &Camera, render_type: &RenderMode) {
+    //    //Remove the "par_" from the line below to check performance single threaded
+    //    self.tiles.par_iter_mut().enumerate().for_each(|tile| {
+    //        tile.1.render(&self.triangles, camera, render_type, None);
+    //    });
+    //}
 
     pub fn extern_render(
         &mut self,
@@ -105,10 +108,12 @@ impl SlicedBuffers {
         camera: &Camera,
         render_type: &RenderMode,
         texture: Option<&Arc<Texture>>,
+        material: &Material,
     ) {
         //Remove the "par_" from the line below to check performance single threaded
         self.tiles.par_iter_mut().enumerate().for_each(|tile| {
-            tile.1.render(triangles, camera, render_type, texture);
+            tile.1
+                .render(triangles, camera, render_type, texture, material);
         });
     }
 

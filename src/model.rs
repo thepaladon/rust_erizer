@@ -2,7 +2,7 @@ use crate::{
     camera::Camera, mesh::VertexMesh, sliced_buffer::SlicedBuffers, tex_manager::TEXTURE_MANAGER,
     transform::Transform,
 };
-use gltf::{self, Gltf};
+use gltf::{self, buffer::Data, Gltf, Node};
 
 pub struct Model {
     pub meshes: Vec<VertexMesh>,
@@ -37,22 +37,31 @@ impl Model {
 
         for scene in document.scenes() {
             for node in scene.nodes() {
-                if let Some(mesh) = node.mesh() {
-                    for primitive in mesh.primitives() {
-                        let mut my_mesh = VertexMesh::gltf_load_mesh(&primitive, &buffers);
-
-                        if my_mesh.material.base_tex_idx != -1 {
-                            my_mesh.texture =
-                                Some(model.textures[my_mesh.material.base_tex_idx as usize]);
-                        }
-
-                        model.meshes.push(my_mesh);
-                    }
-                }
+                Self::load_data_from_node(&mut model, &node, &buffers);
             }
         }
 
         model
+    }
+
+    fn load_data_from_node(model: &mut Model, node: &Node, buffers: &Vec<Data>) {
+        //Load mesh if there's on in the node
+        if let Some(mesh) = node.mesh() {
+            for primitive in mesh.primitives() {
+                let mut my_mesh = VertexMesh::gltf_load_mesh(&primitive, buffers);
+
+                if my_mesh.material.base_tex_idx != -1 {
+                    my_mesh.texture = Some(model.textures[my_mesh.material.base_tex_idx as usize]);
+                }
+
+                model.meshes.push(my_mesh);
+            }
+        }
+
+        //check for children and load meshes from their nodes
+        for child in node.children() {
+            Self::load_data_from_node(model, &child, buffers);
+        }
     }
 
     pub fn from_mesh(mesh: VertexMesh, transform: Transform) -> Self {

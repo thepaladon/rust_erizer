@@ -96,10 +96,10 @@ pub fn vec3_to_u32(val: Vec3) -> u32 {
 }
 
 pub fn vec4_to_u32(val: Vec4) -> u32 {
-    let a = val.x as u8;
-    let r = val.y as u8;
-    let g = val.z as u8;
-    let b = val.w as u8;
+    let a = val.w as u8;
+    let r = val.x as u8;
+    let g = val.y as u8;
+    let b = val.z as u8;
 
     let mut argb: u32 = a as u32;
     argb = (argb << 8) + r as u32;

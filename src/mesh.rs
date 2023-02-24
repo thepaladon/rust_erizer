@@ -8,7 +8,7 @@ use crate::{
     tex_manager::TEXTURE_MANAGER, texture::Texture, transform::Transform, triangle::Triangle,
 };
 pub enum RenderMode {
-    Color,
+    Default,
     VertexColor,
     Texture,
     TextureColor,
@@ -17,13 +17,14 @@ pub enum RenderMode {
     Bary,
     Depth,
     Aabb,
+    Error,
 }
 
 impl RenderMode {
     fn next_mode(&self) -> Self {
         use RenderMode::*;
         match *self {
-            Color => VertexColor,
+            Default => VertexColor,
             VertexColor => Texture,
             Texture => TextureColor,
             TextureColor => Normal,
@@ -31,14 +32,16 @@ impl RenderMode {
             Uv => Bary,
             Bary => Depth,
             Depth => Aabb,
-            Aabb => Color,
+            Aabb => Error,
+            Error => Default,
         }
     }
 
     fn previous_mode(&self) -> Self {
         use RenderMode::*;
         match *self {
-            VertexColor => Color,
+            Default => Error,
+            VertexColor => Default,
             Texture => VertexColor,
             TextureColor => Texture,
             Normal => TextureColor,
@@ -46,14 +49,14 @@ impl RenderMode {
             Bary => Uv,
             Depth => Bary,
             Aabb => Depth,
-            Color => Aabb,
+            Error => Aabb,
         }
     }
 }
 
 impl Default for RenderMode {
     fn default() -> Self {
-        Self::Texture
+        Self::Default
     }
 }
 
@@ -89,23 +92,6 @@ pub struct FragmentMesh {
 }
 
 impl VertexMesh {
-    //Default Empty Constructor
-    //pub fn new() -> Self {
-    //    let material = Material {
-    //        base_color: Vec4::splat(255.0),
-    //        ..Default::default()
-    //    };
-    //    Self {
-    //        vertices: Vec::new(),
-    //        indices: Vec::new(),
-    //        material,
-    //        texture: None,
-    //        transform: Transform::IDENTITY,
-    //        render_mode: RenderMode::default(),
-    //        aa_bb: None,
-    //    }
-    //}
-
     pub fn new(
         vertices: &[Vertex],
         indices: &[u32],
@@ -116,7 +102,7 @@ impl VertexMesh {
         if let Some(color) = color {
             base_color = color;
         } else {
-            base_color = Vec4::splat(255.0);
+            base_color = Vec4::splat(1.0);
         }
 
         let material = Material {
@@ -144,17 +130,12 @@ impl VertexMesh {
             indices.len()
         );
 
-        let material = Material {
-            base_tex_idx: -1,
-            base_color: Vec4::splat(255.0),
-        };
-
         let aa_bb = Self::get_vertex_min_max(vertices);
 
         Self {
             vertices: vertices.to_vec(),
             indices: indices.to_vec(),
-            material,
+            material: Default::default(),
             texture: Some(texture),
             transform: Transform::IDENTITY,
             render_mode: RenderMode::default(),
@@ -283,9 +264,21 @@ impl VertexMesh {
             if let Some(tex) = self.texture {
                 let manager = TEXTURE_MANAGER.read().unwrap();
                 let texture = manager.get_texture(&tex);
-                slice_buff.extern_render(&triangles_to_render, camera, &self.render_mode, texture);
+                slice_buff.extern_render(
+                    &triangles_to_render,
+                    camera,
+                    &self.render_mode,
+                    texture,
+                    &self.material,
+                );
             } else {
-                slice_buff.extern_render(&triangles_to_render, camera, &self.render_mode, None);
+                slice_buff.extern_render(
+                    &triangles_to_render,
+                    camera,
+                    &self.render_mode,
+                    None,
+                    &self.material,
+                );
             }
 
             slice_buff.clear_tiles();

@@ -81,8 +81,9 @@ fn main() {
 
     let mut scenes: Vec<Scene> = Vec::new();
     let mut scene_idx: usize = 0;
-    scenes.push(Scene::new("Hello Scene".to_string()));
-    scenes.push(Scene::new("Hello Scene 2".to_string()));
+    scenes.push(Scene::new("Sponza".to_string()));
+    scenes.push(Scene::new("Helment & Cube".to_string()));
+    scenes.push(Scene::new("Caspia Car".to_string()));
 
     let cube = VertexMesh::from_texture(&data::CUBE_VERTICES, &data::CUBE_INDICES, bojan_tex);
 
@@ -154,6 +155,10 @@ fn main() {
         model.transform = Transform::from_translation(Vec3::new(2.0, 2.0, 0.0));
     }
 
+    // SCENE 3
+    scenes[2].add_gltf("Car Base", "resources/caspia/CaspiaBody.gltf");
+    scenes[2].add_gltf("Car Wheels", "resources/caspia/CaspiaWheel.gltf");
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         //Delta Time
         let now = Instant::now();
@@ -207,20 +212,22 @@ fn main() {
         //sliced_buffers.render(&camera, &cube.render_mode);
 
         if window.is_key_down(Key::LeftBracket) {
-            scene_idx += 1;
-            scene_idx %= scenes.len();
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
-        if window.is_key_down(Key::RightBracket) {
             scene_idx -= 1;
             scene_idx %= scenes.len();
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
+        if window.is_key_down(Key::RightBracket) {
+            scene_idx += 1;
+            scene_idx %= scenes.len();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
 
+        // DELETE SPONZA
         if window.is_key_down(Key::N) {
             scenes[scene_idx].remove_model("Sponza");
         }
 
+        // SPAWN SPONZA
         if window.is_key_down(Key::B) {
             scenes[scene_idx].add_gltf("Sponza", "resources/sponza/Sponza.gltf");
 

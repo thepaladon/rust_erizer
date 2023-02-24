@@ -10,7 +10,7 @@ impl Default for Material {
     fn default() -> Self {
         Self {
             base_tex_idx: -1,
-            base_color: Vec4::splat(0.0),
+            base_color: Vec4::splat(1.0),
         }
     }
 }
