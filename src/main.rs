@@ -46,8 +46,8 @@ const _BLACK: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
 const WIN_WIDTH: usize = 1920;
 const WIN_HEIGHT: usize = 1080;
-const BUFF_WIDTH: usize = 1920 / BUFF_SCALE;
-const BUFF_HEIGHT: usize = 1080 / BUFF_SCALE;
+const BUFF_WIDTH: usize = WIN_WIDTH / BUFF_SCALE;
+const BUFF_HEIGHT: usize = WIN_HEIGHT / BUFF_SCALE;
 const BUFF_SCALE: usize = 2;
 const TILE_SIZE: i32 = 8;
 

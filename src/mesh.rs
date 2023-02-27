@@ -205,7 +205,8 @@ impl VertexMesh {
         parent_trans: &Transform,
     ) {
         let model = self.transform.local() * parent_trans.local();
-        let mvp = camera.perspective() * camera.view() * model;
+        let mv =  camera.view() * model;
+        let mvp =  camera.perspective() * mv;
 
         if self.cull_mesh_frustum(mvp) {
             let inv_transpose = model.inverse().transpose();
@@ -217,6 +218,15 @@ impl VertexMesh {
                     self.indices[i + 1] as usize,
                     self.indices[i + 2] as usize,
                 ];
+
+                let clip0 = mv * self.vertices[tri_idx[0]].position;
+                let clip1 = mv * self.vertices[tri_idx[1]].position;
+                let clip2 = mv * self.vertices[tri_idx[2]].position;
+
+                //Backface culling
+                if !Triangle::cull_triangle_backface(&clip0, &clip1, &clip2) {
+                    continue;
+                }
 
                 let clip0 = mvp * self.vertices[tri_idx[0]].position;
                 let clip1 = mvp * self.vertices[tri_idx[1]].position;

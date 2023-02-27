@@ -714,7 +714,7 @@ impl Triangle {
 
     pub fn clip_cull_triangle(tri: &Triangle) -> ClipResult {
         // All triangles not facing the camera are discarded
-        //if Self::cull_triangle_backface([tri.v[0].position, tri.v[1].position, tri.v[2].position]) {
+        //if Self::cull_triangle_backface(&tri.v[0].position, &tri.v[1].position, &tri.v[2].position) {
         //    return ClipResult::Clipped;
         //}
 
@@ -746,19 +746,25 @@ impl Triangle {
         }
     }
 
+    //Cheers to Andrei, for fixing this for me
     // All triangles not facing the camera are discarded
-    fn cull_triangle_backface(vertices: [Vec4; 3]) -> bool {
-        let normal =
-            (vertices[1].xyz() - vertices[0].xyz()).cross(vertices[2].xyz() - vertices[0].xyz());
-
-        // any is vertex valid
-        let view_dir = -Vec3::Z;
-
-        // also we don't care about normalizing
-        // if negative facing the camera
-        normal.dot(view_dir) >= 0.0
+    pub fn cull_triangle_backface(pos_0: &Vec4, pos_1: &Vec4, pos_2: &Vec4) -> bool {
+        // Get triangle normal
+        let normal = (pos_1.xyz() - pos_0.xyz())
+            .cross(pos_2.xyz() - pos_0.xyz())
+            .normalize();
+    
+        let view_dir0 = pos_0.xyz().normalize();
+        let view_dir1 = pos_1.xyz().normalize();
+        let view_dir2 = pos_2.xyz().normalize();
+    
+        let dot0 = view_dir0.dot(normal);
+        let dot1 = view_dir1.dot(normal);
+        let dot2 = view_dir2.dot(normal);
+    
+        dot0 < 0.0 && dot1 < 0.0 && dot2 < 0.0
     }
-
+    
     pub fn clip_triangle_one(&self) -> Triangle {
         let v0z = self.v[0].position.z;
         let v1z = self.v[1].position.z;
