@@ -753,18 +753,18 @@ impl Triangle {
         let normal = (pos_1.xyz() - pos_0.xyz())
             .cross(pos_2.xyz() - pos_0.xyz())
             .normalize();
-    
+
         let view_dir0 = pos_0.xyz().normalize();
         let view_dir1 = pos_1.xyz().normalize();
         let view_dir2 = pos_2.xyz().normalize();
-    
+
         let dot0 = view_dir0.dot(normal);
         let dot1 = view_dir1.dot(normal);
         let dot2 = view_dir2.dot(normal);
-    
+
         dot0 < 0.0 && dot1 < 0.0 && dot2 < 0.0
     }
-    
+
     pub fn clip_triangle_one(&self) -> Triangle {
         let v0z = self.v[0].position.z;
         let v1z = self.v[1].position.z;

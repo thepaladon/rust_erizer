@@ -205,8 +205,8 @@ impl VertexMesh {
         parent_trans: &Transform,
     ) {
         let model = self.transform.local() * parent_trans.local();
-        let mv =  camera.view() * model;
-        let mvp =  camera.perspective() * mv;
+        let mv = camera.view() * model;
+        let mvp = camera.perspective() * mv;
 
         if self.cull_mesh_frustum(mvp) {
             let inv_transpose = model.inverse().transpose();

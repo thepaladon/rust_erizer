@@ -1,7 +1,7 @@
 # Title
 Name: Angel Donchev Angelov
-
 BUas email: 211195@buas.nl
+Personal Email : ang.don.ang@gmail.com
 
 ## Features
 > Provide a detailed list of the features implemented
