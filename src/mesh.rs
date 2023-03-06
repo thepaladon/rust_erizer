@@ -161,6 +161,7 @@ impl VertexMesh {
             let mut triangles_to_render: Vec<Triangle> = Vec::new();
 
             for i in (0..self.indices.len()).step_by(3) {
+                //VERTEX SHADER WORK ---------------------------------------
                 let tri_idx: [usize; 3] = [
                     self.indices[i] as usize,
                     self.indices[i + 1] as usize,
@@ -214,10 +215,14 @@ impl VertexMesh {
                         triangles_to_render.push(tri.1);
                     }
                 }
+                //VERTEX SHADER WORK ---------------------------------------
+
             }
 
+            // MIDDLE GRAPHICS API STEP
             slice_buff.external_aa_bb_comparison(triangles_to_render.as_mut_slice());
 
+            //FRAGMENT SHADER WORK ------------------------------------------
             //Get Texture and render
             if let Some(tex) = self.texture {
                 let manager = TEXTURE_MANAGER.read().unwrap();
@@ -238,7 +243,9 @@ impl VertexMesh {
                     &self.material,
                 );
             }
+            //FRAGMENT SHADER WORK ------------------------------------------
 
+            // MIDDLE GRAPHICS API STEP
             slice_buff.clear_tiles();
         }
     }

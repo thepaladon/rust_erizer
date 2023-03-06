@@ -15,6 +15,7 @@ mod model;
 use minifb::MouseMode;
 use minifb::ScaleMode;
 use scene::Scene;
+use tangl::TanglRenderer;
 use transform::Transform;
 use camera::Camera;
 
@@ -25,8 +26,7 @@ use std::time::Instant;
 //Include in Tangl
 use model::Model;
 use mesh::VertexMesh;
-use crate::tex_manager::*; //but maybe only when creating the Texture...
-// When you create a new texture, it should give you this
+
 
 use crate::input::enable_mouse;
 use crate::mouse_diff::set_mouse_pos;
@@ -54,11 +54,13 @@ const TILE_SIZE: i32 = 8;
 fn main() {
 
     // TANGL
-    let mut buffer: Vec<u32> = vec![0; BUFF_WIDTH * BUFF_HEIGHT];
-    let depth_buffer: Vec<f32> = vec![f32::INFINITY; BUFF_WIDTH * BUFF_HEIGHT];
-    let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, TILE_SIZE);
-    // TANGL
+    //let mut buffer: Vec<u32> = vec![0; BUFF_WIDTH * BUFF_HEIGHT];
+    //let depth_buffer: Vec<f32> = vec![f32::INFINITY; BUFF_WIDTH * BUFF_HEIGHT];
+    //let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, TILE_SIZE);
 
+    let renderer = TanglRenderer::Tangl_Init(BUFF_WIDTH as u32, BUFF_HEIGHT as u32, TILE_SIZE);
+
+    // TANGL
     let win_ops = WindowOptions {
         resize: true,
         scale_mode: ScaleMode::AspectRatioStretch,

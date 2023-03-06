@@ -1,6 +1,7 @@
 use std::ops::{Add, Mul, Sub};
 use glam::{Vec2, Vec3, Vec4};
 
+//how do I get vertex data here?
 
 pub static PLANE_DATA: [Vertex; 4] = [
     Vertex {

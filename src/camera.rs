@@ -14,8 +14,7 @@ use glam::{Mat4, Vec3};
 use glam::{Quat, Vec4};
 
 use crate::transform::Transform;
-use crate::WIN_HEIGHT;
-use crate::WIN_WIDTH;
+
 
 pub struct Camera {
     pub near_plane: f32,
@@ -36,7 +35,7 @@ impl Default for Camera {
             near_plane: 0.1,
             far_plane: 100.0,
             fov: f32::to_radians(60.0),
-            aspect_ratio: WIN_WIDTH as f32 / WIN_HEIGHT as f32,
+            aspect_ratio: crate::WIN_WIDTH as f32 / crate::WIN_HEIGHT as f32,
             move_speed: 2.0,
             fov_sensitivity: 8.0,
             sensitivity: 0.05,
