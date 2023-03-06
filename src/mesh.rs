@@ -4,61 +4,9 @@ use glam::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 use rand::Rng;
 
 use crate::{
-    camera::Camera, data::Vertex, material::Material, sliced_buffer::SlicedBuffers,
+    camera::Camera, triangle::Vertex, material::Material, sliced_buffer::SlicedBuffers,
     tex_manager::TEXTURE_MANAGER, texture::Texture, transform::Transform, triangle::Triangle,
 };
-pub enum RenderMode {
-    Default,
-    VertexColor,
-    Texture,
-    TextureColor,
-    Normal,
-    Uv,
-    Bary,
-    Depth,
-    Aabb,
-    Error,
-}
-
-impl RenderMode {
-    fn next_mode(&self) -> Self {
-        use RenderMode::*;
-        match *self {
-            Default => VertexColor,
-            VertexColor => Texture,
-            Texture => TextureColor,
-            TextureColor => Normal,
-            Normal => Uv,
-            Uv => Bary,
-            Bary => Depth,
-            Depth => Aabb,
-            Aabb => Error,
-            Error => Default,
-        }
-    }
-
-    fn previous_mode(&self) -> Self {
-        use RenderMode::*;
-        match *self {
-            Default => Error,
-            VertexColor => Default,
-            Texture => VertexColor,
-            TextureColor => Texture,
-            Normal => TextureColor,
-            Uv => Normal,
-            Bary => Uv,
-            Depth => Bary,
-            Aabb => Depth,
-            Error => Aabb,
-        }
-    }
-}
-
-impl Default for RenderMode {
-    fn default() -> Self {
-        Self::Default
-    }
-}
 
 pub struct VertexMesh {
     pub vertices: Vec<Vertex>,

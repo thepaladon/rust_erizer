@@ -6,36 +6,30 @@ extern crate minifb;
 mod camera;
 mod data;
 mod input;
-mod material;
-mod mesh;
-mod model;
 mod mouse_diff;
-mod render_utils;
-mod sampler;
 mod scene;
-mod sliced_buffer;
-mod tex_manager;
-mod texture;
 mod transform;
-mod triangle;
+mod mesh; 
+mod model;
 
-use mesh::VertexMesh;
 use minifb::MouseMode;
 use minifb::ScaleMode;
-use model::Model;
 use scene::Scene;
-use sliced_buffer::SlicedBuffers;
 use transform::Transform;
-
 use camera::Camera;
 
 use glam::Vec3;
 use minifb::{Key, Window, WindowOptions};
 use std::time::Instant;
 
+//Include in Tangl
+use model::Model;
+use mesh::VertexMesh;
+use crate::tex_manager::*; //but maybe only when creating the Texture...
+// When you create a new texture, it should give you this
+
 use crate::input::enable_mouse;
 use crate::mouse_diff::set_mouse_pos;
-use crate::tex_manager::*;
 
 const _RED: Vec3 = Vec3::new(255.0, 0.0, 0.0);
 const _GREEN: Vec3 = Vec3::new(0.0, 255.0, 0.0);
@@ -58,26 +52,32 @@ const TILE_SIZE: i32 = 8;
 // /8 - 240 x 135
 
 fn main() {
+
+    // TANGL
     let mut buffer: Vec<u32> = vec![0; BUFF_WIDTH * BUFF_HEIGHT];
     let depth_buffer: Vec<f32> = vec![f32::INFINITY; BUFF_WIDTH * BUFF_HEIGHT];
-
     let mut sliced_buffers = SlicedBuffers::from_buffers(&buffer, &depth_buffer, TILE_SIZE);
+    // TANGL
+
     let win_ops = WindowOptions {
         resize: true,
         scale_mode: ScaleMode::AspectRatioStretch,
         ..Default::default()
     };
+
     let mut window = Window::new("Angle's Rust_erizer", WIN_WIDTH, WIN_HEIGHT, win_ops)
         .unwrap_or_else(|e| {
             panic!("{}", e);
         });
 
+    // TANGL - Needs to be abstracted better
     let bojan_tex = {
         let mut manager = TEXTURE_MANAGER.write().unwrap();
         manager
             .load_from_filepath("resources/textures/bojan.jpg")
             .expect("Not found")
     };
+    // TANGL - Needs to be abstracted better
 
     let mut scenes: Vec<Scene> = Vec::new();
     let mut scene_idx: usize = 0;

@@ -823,6 +823,7 @@ dependencies = [
  "minifb",
  "rand",
  "rayon",
+ "tangl",
  "winapi",
 ]
 
@@ -939,6 +940,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tangl"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "gltf",
+ "image",
+ "lazy_static",
+ "rand",
+ "rayon",
 ]
 
 [[package]]
