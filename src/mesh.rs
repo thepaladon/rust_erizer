@@ -2,15 +2,16 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 use rand::Rng;
+use tangl::TanglRenderer;
 
 use crate::{
     camera::Camera, triangle::Vertex, material::Material, sliced_buffer::SlicedBuffers,
-    tex_manager::TEXTURE_MANAGER, texture::Texture, transform::Transform, triangle::Triangle,
+    texture::Texture, transform::Transform, triangle::Triangle,
 };
 
 pub struct VertexMesh {
-    pub vertices: Vec<Vertex>,
-    pub indices: Vec<u32>,
+    pub vertices: i32,    //INDEX to Buffer held in Tangl
+    pub indices: i32,      //INDEX to Buffer held in Tangl
     pub material: Material,
     pub texture: Option<i32>,
     pub transform: Transform,
@@ -22,8 +23,8 @@ pub struct VertexMesh {
 impl Default for VertexMesh {
     fn default() -> Self {
         Self {
-            vertices: Vec::new(),
-            indices: Vec::new(),
+            vertices: -1,
+            indices: -1,
             material: Default::default(),
             texture: None,
             transform: Default::default(),
@@ -91,6 +92,7 @@ impl VertexMesh {
         }
     }
 
+    // I CANNOT HAVE THIS ANYMORE, IT HAS TO BE IN VERTEX
     fn get_vertex_min_max(vertices: &[Vertex]) -> [Vec3; 2] {
         let mut max = Vec3::splat(-f32::INFINITY);
         let mut min = Vec3::splat(f32::INFINITY);
@@ -160,93 +162,93 @@ impl VertexMesh {
             let inv_transpose = model.inverse().transpose();
             let mut triangles_to_render: Vec<Triangle> = Vec::new();
 
-            for i in (0..self.indices.len()).step_by(3) {
-                //VERTEX SHADER WORK ---------------------------------------
-                let tri_idx: [usize; 3] = [
-                    self.indices[i] as usize,
-                    self.indices[i + 1] as usize,
-                    self.indices[i + 2] as usize,
-                ];
+            // for i in (0..self.indices.len()).step_by(3) {
+            //     //VERTEX SHADER WORK ---------------------------------------
+            //     let tri_idx: [usize; 3] = [
+            //         self.indices[i] as usize,
+            //         self.indices[i + 1] as usize,
+            //         self.indices[i + 2] as usize,
+            //     ];
 
-                let clip0 = mv * self.vertices[tri_idx[0]].position;
-                let clip1 = mv * self.vertices[tri_idx[1]].position;
-                let clip2 = mv * self.vertices[tri_idx[2]].position;
+            //     let clip0 = mv * self.vertices[tri_idx[0]].position;
+            //     let clip1 = mv * self.vertices[tri_idx[1]].position;
+            //     let clip2 = mv * self.vertices[tri_idx[2]].position;
 
-                //Backface culling
-                if !Triangle::cull_triangle_backface(&clip0, &clip1, &clip2) {
-                    continue;
-                }
+            //     //Backface culling
+            //     if !Triangle::cull_triangle_backface(&clip0, &clip1, &clip2) {
+            //         continue;
+            //     }
 
-                let clip0 = mvp * self.vertices[tri_idx[0]].position;
-                let clip1 = mvp * self.vertices[tri_idx[1]].position;
-                let clip2 = mvp * self.vertices[tri_idx[2]].position;
+            //     let clip0 = mvp * self.vertices[tri_idx[0]].position;
+            //     let clip1 = mvp * self.vertices[tri_idx[1]].position;
+            //     let clip2 = mvp * self.vertices[tri_idx[2]].position;
 
-                //https://github.com/graphitemaster/normals_revisited
-                //let norm0 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
-                //let norm1 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
-                //let norm2 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
+            //     //https://github.com/graphitemaster/normals_revisited
+            //     //let norm0 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
+            //     //let norm1 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
+            //     //let norm2 = render_utils::cofactor(model) * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
 
-                let norm0 = inv_transpose * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
-                let norm1 = inv_transpose * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
-                let norm2 = inv_transpose * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
+            //     let norm0 = inv_transpose * Vec4::from((self.vertices[tri_idx[0]].normal, 0.0));
+            //     let norm1 = inv_transpose * Vec4::from((self.vertices[tri_idx[1]].normal, 0.0));
+            //     let norm2 = inv_transpose * Vec4::from((self.vertices[tri_idx[2]].normal, 0.0));
 
-                let mut copy0 = self.vertices[tri_idx[0]];
-                let mut copy1 = self.vertices[tri_idx[1]];
-                let mut copy2 = self.vertices[tri_idx[2]];
+            //     let mut copy0 = self.vertices[tri_idx[0]];
+            //     let mut copy1 = self.vertices[tri_idx[1]];
+            //     let mut copy2 = self.vertices[tri_idx[2]];
 
-                copy0.position = clip0;
-                copy1.position = clip1;
-                copy2.position = clip2;
+            //     copy0.position = clip0;
+            //     copy1.position = clip1;
+            //     copy2.position = clip2;
 
-                copy0.normal = norm0.xyz().normalize();
-                copy1.normal = norm1.xyz().normalize();
-                copy2.normal = norm2.xyz().normalize();
+            //     copy0.normal = norm0.xyz().normalize();
+            //     copy1.normal = norm1.xyz().normalize();
+            //     copy2.normal = norm2.xyz().normalize();
 
-                let triangle = Triangle::new([copy0, copy1, copy2]);
+            //     let triangle = Triangle::new([copy0, copy1, copy2]);
 
-                //Collect all triangles here and pass them as a mesh to FS
-                match triangle.render_triangle() {
-                    crate::triangle::ClipResult::Clipped => { /* Fuck all */ }
-                    crate::triangle::ClipResult::One(tri) => {
-                        triangles_to_render.push(tri);
-                    }
-                    crate::triangle::ClipResult::Two(tri) => {
-                        triangles_to_render.push(tri.0);
-                        triangles_to_render.push(tri.1);
-                    }
-                }
-                //VERTEX SHADER WORK ---------------------------------------
+            //     //Collect all triangles here and pass them as a mesh to FS
+            //     match triangle.render_triangle() {
+            //         crate::triangle::ClipResult::Clipped => { /* Fuck all */ }
+            //         crate::triangle::ClipResult::One(tri) => {
+            //             triangles_to_render.push(tri);
+            //         }
+            //         crate::triangle::ClipResult::Two(tri) => {
+            //             triangles_to_render.push(tri.0);
+            //             triangles_to_render.push(tri.1);
+            //         }
+            //     }
+            //     //VERTEX SHADER WORK ---------------------------------------
 
-            }
+            // }
 
-            // MIDDLE GRAPHICS API STEP
-            slice_buff.external_aa_bb_comparison(triangles_to_render.as_mut_slice());
+            // // MIDDLE GRAPHICS API STEP
+            // slice_buff.external_aa_bb_comparison(triangles_to_render.as_mut_slice());
 
-            //FRAGMENT SHADER WORK ------------------------------------------
-            //Get Texture and render
-            if let Some(tex) = self.texture {
-                let manager = TEXTURE_MANAGER.read().unwrap();
-                let texture = manager.get_texture(&tex);
-                slice_buff.extern_render(
-                    &triangles_to_render,
-                    camera,
-                    &self.render_mode,
-                    texture,
-                    &self.material,
-                );
-            } else {
-                slice_buff.extern_render(
-                    &triangles_to_render,
-                    camera,
-                    &self.render_mode,
-                    None,
-                    &self.material,
-                );
-            }
-            //FRAGMENT SHADER WORK ------------------------------------------
+            // //FRAGMENT SHADER WORK ------------------------------------------
+            // //Get Texture and render
+            // if let Some(tex) = self.texture {
+            //     let manager = TEXTURE_MANAGER.read().unwrap();
+            //     let texture = manager.get_texture(&tex);
+            //     slice_buff.extern_render(
+            //         &triangles_to_render,
+            //         camera,
+            //         &self.render_mode,
+            //         texture,
+            //         &self.material,
+            //     );
+            // } else {
+            //     slice_buff.extern_render(
+            //         &triangles_to_render,
+            //         camera,
+            //         &self.render_mode,
+            //         None,
+            //         &self.material,
+            //     );
+            // }
+            // //FRAGMENT SHADER WORK ------------------------------------------
 
-            // MIDDLE GRAPHICS API STEP
-            slice_buff.clear_tiles();
+            // // MIDDLE GRAPHICS API STEP
+            // slice_buff.clear_tiles();
         }
     }
 
@@ -322,6 +324,7 @@ impl VertexMesh {
         colors: &[Vec3],
         tex_coords: &[Vec2],
     ) {
+        let vertices = Vec::new();
         for i in 0..positions.len() {
             let v = Vertex {
                 position: Vec4::from((positions[i], 1.0)),
@@ -329,8 +332,9 @@ impl VertexMesh {
                 color: colors[i],
                 uv: tex_coords[i],
             };
-            self.vertices.push(v);
+            vertices.push(v);
         }
+        //self.vertices = 
 
         self.indices.extend_from_slice(indices);
     }

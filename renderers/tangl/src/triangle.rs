@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::{
-    material::Material,
     render_utils::{self, edge_fun},
     sampler::*,
     texture::Texture, render_mode::RenderMode,
@@ -363,10 +362,7 @@ impl Triangle {
                 let img_width = (texture.width as f32 - 1.0) * uv.x;
                 let img_height = (texture.height as f32 - 1.0) * uv.y;
 
-                //let img_width = f32::clamp(img_width, 0, tex )
-
                 if img_width < 0.0 || img_width >= texture.width as f32 {
-                    let b = 1.0;
                     panic!("Image WIDTH out of bounds. Value: {img_width}");
                 }
                 if img_height < 0.0 || img_height >= texture.height as f32 {

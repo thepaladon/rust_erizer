@@ -11,6 +11,7 @@ mod scene;
 mod transform;
 mod mesh; 
 mod model;
+mod material;
 
 use minifb::MouseMode;
 use minifb::ScaleMode;
@@ -72,14 +73,7 @@ fn main() {
             panic!("{}", e);
         });
 
-    // TANGL - Needs to be abstracted better
-    let bojan_tex = {
-        let mut manager = TEXTURE_MANAGER.write().unwrap();
-        manager
-            .load_from_filepath("resources/textures/bojan.jpg")
-            .expect("Not found")
-    };
-    // TANGL - Needs to be abstracted better
+    let bojan_tex = TanglRenderer::Tangl_GenTextureFilepath("resources/textures/bojan.jpg");
 
     let mut scenes: Vec<Scene> = Vec::new();
     let mut scene_idx: usize = 0;
@@ -170,9 +164,12 @@ fn main() {
         //Clear buffers
         let clear_color = render_utils::vec3_to_u32(_RED);
 
-        sliced_buffers.clear_color(clear_color);
-        sliced_buffers.clear_depth(f32::INFINITY);
-        sliced_buffers.clear_tiles();
+        renderer.Tangl_ClearColor(clear_color);
+        renderer.Tangl_ClearDepth(f32::INFINITY);
+
+        //sliced_buffers.clear_color(clear_color);
+        //sliced_buffers.clear_depth(f32::INFINITY);
+        //sliced_buffers.clear_tiles();
 
         //Rotate object on screen
         rotation += 0.01;
@@ -238,11 +235,11 @@ fn main() {
             }
         }
 
-        buffer = sliced_buffers.transfer_buffer();
-
         //Input
         input::move_camera(&window, &mut camera, dt);
         mouse_diff::change_fov(&window, &mut camera, dt);
+
+        let buffer = renderer.Tangl_SendForDisplay();
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window

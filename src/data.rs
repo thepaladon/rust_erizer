@@ -1,7 +1,12 @@
-use std::ops::{Add, Mul, Sub};
 use glam::{Vec2, Vec3, Vec4};
 
 //how do I get vertex data here?
+pub struct Vertex {
+    pub position: Vec4,
+    pub normal: Vec3,
+    pub color: Vec3,
+    pub uv: Vec2,
+}
 
 pub static PLANE_DATA: [Vertex; 4] = [
     Vertex {

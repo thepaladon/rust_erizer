@@ -4,7 +4,7 @@ use glam::{IVec2, Vec2, Mat4, UVec2};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
-    material::Material, texture::Texture, triangle::Triangle,
+    texture::Texture, triangle::Triangle,
 };
 
 pub struct Tile {
@@ -61,7 +61,7 @@ impl Tile {
         camera: &Mat4,
         render_type: &i32,
         texture: Option<&Arc<Texture>>,
-        material: &Material,
+        //material: &Material,
     ) {
         for i in self.tri_idx.iter() {
             tri_buff[*i as usize].render_fragments(

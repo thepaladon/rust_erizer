@@ -1,5 +1,5 @@
 use crate::{
-    camera::Camera, mesh::VertexMesh, sliced_buffer::SlicedBuffers, tex_manager::TEXTURE_MANAGER,
+    camera::Camera, mesh::VertexMesh,
     transform::Transform,
 };
 use gltf::{self, buffer::Data, Gltf, Node};
@@ -28,12 +28,7 @@ impl Model {
         assert_eq!(buffers.len(), document.buffers().count());
         assert_eq!(images.len(), document.images().count());
 
-        {
-            let mut manager = TEXTURE_MANAGER.write().unwrap();
-            model.textures = manager
-                .load_from_gltf_images(images)
-                .expect("Textures not found");
-        }
+        model.textures = tangl::TanglRenderer::Tangl_GenTextureImage(images);
 
         for scene in document.scenes() {
             for node in scene.nodes() {
@@ -92,10 +87,9 @@ impl Model {
 
 impl Drop for Model {
     fn drop(&mut self) {
-        let mut manager = TEXTURE_MANAGER.write().unwrap();
 
         for tex in &self.textures {
-            manager.destroy_texture(tex);
+            tangl::TanglRenderer::Tangl_DestroyTexture(tex);
         }
     }
 }
