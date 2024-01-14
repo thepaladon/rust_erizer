@@ -3,9 +3,10 @@
 Runs with 28ms on my `Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz`
 ![image](https://github.com/thepaladon/rust_erizer/assets/44022509/12b8b1b7-14ab-445e-b2f9-234c39546bed)
 
+You can see more showcase images in this file: [Showcase.md](https://github.com/thepaladon/rust_erizer/blob/master/docs/showcase.md)
+
 ## Overview
-A CPU Rasterizer written in Rust between Block B and C during Y2 in BUas. 
-More info in this file [info.md](https://github.com/thepaladon/rust_erizer/blob/master/docs/info.md)
+**A CPU Rasterizer written in Rust between Block B and C during Y2 in BUas.**
 
 This personal project served as my introduction to the Rust programming language. I looked into all of the quality-of-life improvements this language supports over C++ like easy CI/CD, formatting, and warning handling (linting). 
 
